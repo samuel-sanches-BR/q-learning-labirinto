@@ -46,32 +46,34 @@ layout: null
     .q-value{position:absolute;top:2px;left:0;right:0;font-size:0.75em;font-weight:600}
     .log{max-height:150px;overflow-y:auto;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-family:monospace;font-size:0.85em}
     .log-entry{padding:3px 0;border-bottom:1px solid #333}
-    .hidden{display:none}
+    .hidden{display:none!important}
     #status{padding:12px;border-radius:5px;margin:10px 0;text-align:center}
     .status-loading{background:#fff3cd;color:#856404}
     .status-ready{background:#d4edda;color:#155724}
     .status-error{background:#f8d7da;color:#721c24}
     .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .step-info{font-weight:600;color:#2c3e50}
-    #loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#f5f7fa;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000}
-    .rat-animation{font-size:4em;animation:walk 1s infinite alternate}
-    @keyframes walk{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
-    .loading-text{margin-top:20px;font-size:1.1em;color:#7f8c8d}
-    .loading-steps{margin-top:10px;font-size:0.9em;color:#95a5a6}
-    .loading-step{margin:3px 0}
-    .loading-step.done{color:#27ae60}
-    .loading-step.active{color:#3498db;font-weight:600}
+    #loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 0.8s ease}
+    .loading-maze{display:grid;gap:4px;background:#2c3e50;padding:15px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+    .l-cell{width:50px;height:50px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.8em;transition:all 0.2s ease}
+    .l-empty{background:#ecf0f1}
+    .l-wall{background:#34495e}
+    .l-cheese{background:#f1c40f}
+    .l-rat{background:#3498db;box-shadow:0 0 15px rgba(52,152,219,0.5)}
+    .l-path{background:rgba(46,204,113,0.3)}
+    .loading-text{margin-top:25px;font-size:1.3em;color:white;font-weight:600}
+    .loading-sub{margin-top:8px;font-size:1em;color:rgba(255,255,255,0.8)}
+    .loading-dots::after{content:'';animation:dots 1.5s infinite}
+    @keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+    .rat-anim{animation:rat-wiggle 0.5s ease-in-out infinite alternate}
+    @keyframes rat-wiggle{0%{transform:translateX(-3px) rotate(-5deg)}100%{transform:translateX(3px) rotate(5deg)}}
+    .fade-out{opacity:0;pointer-events:none}
   </style>
 </head>
 <body>
   <div id="loading-screen">
-    <div class="rat-animation">🐭</div>
-    <div class="loading-text">Rato aprendendo a encontrar o queijo 🧀</div>
-    <div class="loading-steps">
-      <div id="step-pyodide" class="loading-step">⏳ Carregando WebAssembly (Pyodide)...</div>
-      <div id="step-numpy" class="loading-step">⏳ Carregando NumPy...</div>
-      <div id="step-python" class="loading-step">⏳ Lendo código Q-Learning...</div>
-    </div>
+    <div id="loading-maze" class="loading-maze"></div>
+    <div class="loading-text">🧀 Rato aprendendo a encontrar o queijo<span class="loading-dots"></span></div>
+    <div class="loading-sub" id="loading-status">Inicializando ambiente...</div>
   </div>
 
   <h1>🧀 Q-Learning Maze · Rato e Queijo</h1>
@@ -93,7 +95,6 @@ layout: null
       <div class="config-item">
         <label>ε (exploração) <span id="epsilon-val" class="slider-value">0.20</span></label>
         <input type="range" id="epsilon" min="0" max="1" step="0.01" value="0.20">
-        <small style="color:#7f8c8d">↑ maior ε = mais ações aleatórias</small>
       </div>
       <div class="config-item">
         <label>Penalidade por passo <span id="step-reward-val" class="slider-value">-0.05</span></label>
@@ -187,18 +188,9 @@ layout: null
     <h3>📝 Log de Execução</h3>
     <div id="log" class="log"></div>
   </div>
-  
-  <div class="panel">
-    <p style="margin:0;text-align:center;color:#7f8c8d">
-      🧀 Q‑Learning: o rato aprende por tentativa e erro até encontrar o queijo.
-      <br><br>
-      <a href="https://github.com/samuel-sanches-BR/Q-Learning-Maze" target="_blank" style="color:#3498db;text-decoration:none">[ GitHub / Código-fonte ]</a>
-    </p>
-  </div>
 
   <script>
     let pyodide = null;
-    let mazeState = null;
     let qTable = {};
     let isTraining = false;
     let isEditing = false;
@@ -210,6 +202,7 @@ layout: null
     let episodeCount = 0;
     let lastReward = null;
     let lastSteps = null;
+    let loadingInterval = null;
 
     const statusEl = document.getElementById('status');
     const mazeContainer = document.getElementById('maze-container');
@@ -220,10 +213,16 @@ layout: null
     async function init() {
       setupSliders();
       attachEventHandlers();
+      await runLoadingAnimation();
       await loadPyodideWithSteps();
       setupMaze();
       updateUI();
-      loadingScreen.classList.add('hidden');
+      setTimeout(() => {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(() => {
+          loadingScreen.classList.add('hidden');
+        }, 800);
+      }, 1500);
     }
 
     function setupSliders() {
@@ -251,31 +250,85 @@ layout: null
       document.getElementById('maze-size').addEventListener('change', (e) => { mazeSize = parseInt(e.target.value); });
     }
 
+    async function runLoadingAnimation() {
+      const maze = document.getElementById('loading-maze');
+      maze.style.gridTemplateColumns = 'repeat(5, 50px)';
+      maze.innerHTML = '';
+      const loadWalls = new Set(['1,2','2,2','3,2','2,0','2,1']);
+      const cheesePosLoad = {r:4,c:4};
+      const cells = [];
+      
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'l-cell l-empty';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          if (loadWalls.has(`${r},${c}`)) cell.classList.replace('l-empty', 'l-wall');
+          if (r === cheesePosLoad.r && c === cheesePosLoad.c) {
+            cell.classList.replace('l-empty', 'l-cheese');
+            cell.textContent = '🧀';
+          }
+          maze.appendChild(cell);
+          cells.push(cell);
+        }
+      }
+      
+      const path = [{r:0,c:0},{r:0,c:1},{r:0,c:2},{r:0,c:3},{r:0,c:4},{r:1,c:4},{r:2,c:4},{r:3,c:4},{r:4,c:4}];
+      let pathIndex = 0;
+      let ratCell = null;
+      
+      function addRat(r, c) {
+        if (ratCell) {
+          ratCell.classList.remove('l-rat', 'rat-anim');
+          ratCell.textContent = '';
+        }
+        const idx = r * 5 + c;
+        cells[idx].classList.add('l-rat');
+        cells[idx].textContent = '🐭';
+        cells[idx].classList.add('rat-anim');
+        ratCell = cells[idx];
+        
+        if (pathIndex > 0 && r !== 4 || c !== 4) {
+          const prevIdx = (pathIndex - 1) * 5 + 0;
+          if (!loadWalls.has(`${path[pathIndex-1].r},${path[pathIndex-1].c}`)) {
+            cells[pathIndex - 1 + (pathIndex-1)*5 - pathIndex*5 + r*5].classList.add('l-path');
+          }
+        }
+      }
+      
+      addRat(0, 0);
+      
+      loadingInterval = setInterval(() => {
+        pathIndex++;
+        if (pathIndex < path.length) {
+          const next = path[pathIndex];
+          addRat(next.r, next.c);
+        } else {
+          pathIndex = 0;
+          cells.forEach(c => c.classList.remove('l-path'));
+          setTimeout(() => addRat(0, 0), 300);
+        }
+      }, 400);
+    }
+
     async function loadPyodideWithSteps() {
       try {
-        document.getElementById('step-pyodide').classList.add('active');
+        const statusEl = document.getElementById('loading-status');
+        statusEl.textContent = 'Carregando Pyodide...';
+        
         pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/" });
-        document.getElementById('step-pyodide').classList.remove('active');
-        document.getElementById('step-pyodide').classList.add('done');
+        statusEl.textContent = 'Carregando NumPy...';
         
-        document.getElementById('step-numpy').classList.add('active');
         await pyodide.loadPackage("numpy");
-        document.getElementById('step-numpy').classList.remove('active');
-        document.getElementById('step-numpy').classList.add('done');
+        statusEl.textContent = 'Lendo código Q-Learning...';
         
-        document.getElementById('step-python').classList.add('active');
         await loadPythonCode();
-        document.getElementById('step-python').classList.remove('active');
-        document.getElementById('step-python').classList.add('done');
         
-        statusEl.textContent = "✓ Pronto!";
-        statusEl.className = "status-ready";
         document.getElementById('btn-step').disabled = false;
         document.getElementById('btn-train').disabled = false;
       } catch (err) {
-        document.getElementById('step-python').classList.remove('active');
-        statusEl.textContent = "✗ Erro: " + err.message;
-        statusEl.className = "status-error";
+        document.getElementById('loading-status').textContent = 'Erro: ' + err.message;
         console.error(err);
       }
     }
@@ -364,10 +417,6 @@ q_table = init_q_table(5, set())
           if (walls.has(`${r},${c}`)) cell.classList.add('wall');
           if (r === cheesePos.r && c === cheesePos.c) cell.classList.add('cheese');
           if (r === currentPos.r && c === currentPos.c) cell.classList.add('rat');
-          if (r === currentPos.r && c === currentPos.c && r === cheesePos.r && c === cheesePos.c) {
-            cell.classList.remove('empty','cheese','rat');
-            cell.classList.add('rat','cheese');
-          }
           cell.addEventListener('click', () => handleCellClick(r, c));
           mazeContainer.appendChild(cell);
         }
@@ -615,7 +664,6 @@ json.dumps(result)
       currentPos = {r:0, c:0};
       cheesePos = {r:mazeSize-1, c:mazeSize-1};
       renderMaze();
-      log(`📦 Labirinto padrão carregado`);
     }
 
     window.addEventListener('DOMContentLoaded', init);
