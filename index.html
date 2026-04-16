@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🧀 Q‑Learning Maze</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🧀 Q‑Learning Maze </title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body {
             background: #eef2f5;
             font-family: 'Inter', sans-serif;
@@ -127,9 +127,9 @@
             gap: 6px;
         }
         button:hover { background: #2c4c7a; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .btn-primary { background: #2c7cb6; }
         .btn-warning { background: #b45330; }
-        .btn-success { background: #2f855a; }
         .btn-secondary { background: #4a627a; }
         .maze-editor { display: flex; flex-direction: column; align-items: center; }
         .maze-canvas {
@@ -156,7 +156,7 @@
             gap: 10px;
             margin-bottom: 8px;
         }
-        .q-bar-label { width: 35px; font-weight: 600; font-size: 0.9rem; }
+        .q-bar-label { width: 70px; font-weight: 600; font-size: 0.8rem; }
         .q-bar-bg {
             flex: 1;
             height: 28px;
@@ -231,6 +231,7 @@
         @media (max-width: 780px) {
             body { padding: 1rem; }
             .main-grid { padding: 1rem; }
+            .q-bar-label { width: 50px; font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -238,7 +239,7 @@
 <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-content">
         <canvas id="loadingCanvas" width="200" height="200" class="loading-canvas"></canvas>
-        <div class="loading-text">Carregando ambiente... 🐭 aprendendo a encontrar o queijo 🧀</div>
+        <div class="loading-text">🐭 Carregando ambiente... rato aprendendo a encontrar o queijo 🧀</div>
     </div>
 </div>
 
@@ -333,7 +334,7 @@
             <div class="card">
                 <h3><i class="fas fa-chart-simple"></i> Valores Q (estado atual)</h3>
                 <div style="font-size:0.7rem; margin-bottom:8px; color:#4a627a;">
-                    <i class="fas fa-info-circle"></i> Q‑value indica o quão boa é cada ação neste estado. Quanto maior a barra, melhor.
+                    <i class="fas fa-info-circle"></i> Q‑value: quanto maior a barra, melhor a ação para este estado.
                 </div>
                 <div id="qBarsContainer" class="q-bars-container">
                     <div class="q-bar-item"><span class="q-bar-label">↑ (cima)</span><div class="q-bar-bg"><div class="q-bar-fill" id="qFill0">0.00</div></div></div>
@@ -344,7 +345,7 @@
             </div>
 
             <div id="explanationBox" class="explanation-box">
-                <i class="fas fa-lightbulb"></i> Clique no labirinto para mover o rato (apenas uma célula por vez). O Q‑value será atualizado automaticamente.
+                <i class="fas fa-lightbulb"></i> Clique no labirinto para mover o rato (apenas uma célula por vez). O Q‑value será atualizado.
             </div>
         </div>
     </div>
@@ -358,7 +359,7 @@
 </div>
 
 <script>
-    // ========== ANIMAÇÃO DE LOADING COM MOVIMENTO ALEATÓRIO ==========
+    // ========== ANIMAÇÃO DE LOADING (RATINHO ANDANDO ALEATORIAMENTE) ==========
     const loadingCanvas = document.getElementById('loadingCanvas');
     const loadingCtx = loadingCanvas.getContext('2d');
     let loadingPos = { x: 0, y: 0 };
@@ -368,6 +369,7 @@
         loadingCtx.fillStyle = '#2d3e4e';
         loadingCtx.fillRect(0, 0, 200, 200);
         const cell = 40;
+        // labirinto fixo para o loading
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 5; j++) {
                 if ((i===1 && j===1) || (i===1 && j===3) || (i===3 && j===2)) {
@@ -398,7 +400,7 @@
                 loadingPos.x += move[0];
                 loadingPos.y += move[1];
             }
-            loadingSteps = 10;
+            loadingSteps = 12;
         } else {
             loadingSteps--;
         }
@@ -423,8 +425,9 @@
     let episodeCount = 0;
     let lastReward = 0;
     let size = 5;
-    let trainingLock = false;
+    let trainingLock = false; // evita múltiplos treinos simultâneos
 
+    // Elementos DOM
     const canvas = document.getElementById('mazeCanvas');
     const ctx = canvas.getContext('2d');
     const statusSpan = document.getElementById('statusText');
@@ -454,6 +457,7 @@
     speedSlider.addEventListener('input', updateParamLabels);
     updateParamLabels();
 
+    // Desenho do labirinto e do rato
     function drawMaze(agentRow, agentCol) {
         if (!mazeData) return;
         const rows = mazeData.length;
@@ -508,6 +512,7 @@
         }
     }
 
+    // Atualiza barras de Q-values a partir do estado atual
     async function updateQBarsFromState() {
         if (!isReady) return;
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(${JSON.stringify(currentAgentState)})`);
@@ -525,13 +530,14 @@
         document.getElementById('lastReward').innerText = lastReward.toFixed(2);
     }
 
+    // Gera labirinto vazio com queijo no canto inferior direito
     function generateEmptyMaze(n, withGoalAtEnd = true) {
         let maze = Array(n).fill().map(() => Array(n).fill(0));
         if (withGoalAtEnd) maze[n-1][n-1] = 2;
         return maze;
     }
 
-    // Verifica se há caminho do início ao queijo (BFS)
+    // Verifica se existe caminho entre start e goal (BFS)
     function hasPath(maze, start, goal) {
         const rows = maze.length, cols = maze[0].length;
         const queue = [start];
@@ -540,7 +546,7 @@
         const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
         while (queue.length) {
             const [r,c] = queue.shift();
-            if (r===goal[0] && c===goal[1]) return true;
+            if (r === goal[0] && c === goal[1]) return true;
             for (const [dr,dc] of dirs) {
                 const nr = r+dr, nc = c+dc;
                 if (nr>=0 && nr<rows && nc>=0 && nc<cols && !visited[nr][nc] && maze[nr][nc] !== 1) {
@@ -552,6 +558,7 @@
         return false;
     }
 
+    // Sincroniza o labirinto com o ambiente Python e atualiza a posição do agente
     async function syncMazeToPython() {
         if (!isReady) return;
         await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
@@ -561,10 +568,274 @@
         await updateQBarsFromState();
     }
 
+    // Move o rato manualmente (clique adjacente)
+    async function moveAgentTo(targetRow, targetCol) {
+        if (!isReady || trainingLock) return false;
+        const [row, col] = currentAgentState;
+        const dr = targetRow - row, dc = targetCol - col;
+        if (Math.abs(dr) + Math.abs(dc) !== 1) return false;
+        let actionIdx = -1;
+        if (dr === -1 && dc === 0) actionIdx = 0;
+        else if (dr === 1 && dc === 0) actionIdx = 1;
+        else if (dr === 0 && dc === -1) actionIdx = 2;
+        else if (dr === 0 && dc === 1) actionIdx = 3;
+        else return false;
+        // Verifica se a célula de destino não é parede
+        if (mazeData[targetRow][targetCol] === 1) return false;
+        const alpha = parseFloat(alphaSlider.value);
+        const gamma = parseFloat(gammaSlider.value);
+        const epsilon = parseFloat(epsilonSlider.value);
+        const stepPen = parseFloat(stepPenaltySlider.value);
+        const goalRew = parseFloat(goalRewardSlider.value);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        const result = await pyodide.runPythonAsync(`
+import json
+data = manual_step(${actionIdx})
+json.dumps(data)
+        `);
+        const step = JSON.parse(result);
+        currentAgentState = step.next_state;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await updateQBarsFromState();
+        const bestNext = await pyodide.runPythonAsync(`np.max(agent.q_table[${JSON.stringify(step.next_state)}]).item()`);
+        const actionName = ['↑','↓','←','→'][step.action];
+        explanationDiv.innerHTML = `
+            <div style="background:#e2e8f0; border-radius:12px; padding:12px;">
+                <b><i class="fas fa-brain"></i> Movimento:</b> ${actionName} → (${step.next_state[0]},${step.next_state[1]})<br>
+                <b>Recompensa: ${step.reward.toFixed(2)}</b> &nbsp; γ=${gamma} α=${alpha}<br>
+                <b>Q(antigo)=${step.old_q.toFixed(3)}</b> &nbsp; maxQ(s')=${bestNext.toFixed(3)}<br>
+                <b>TD target = ${step.td_target.toFixed(3)}</b> &nbsp; TD erro = ${step.td_error.toFixed(3)}<br>
+                <b style="color:#2c7cb6;">✅ Novo Q = ${step.new_q.toFixed(3)}</b>
+            </div>
+        `;
+        if (step.is_goal) {
+            explanationDiv.innerHTML += `<div style="margin-top:12px; background:#c6f6d5; padding:8px; border-radius:12px;">🧀 Você encontrou o queijo! Clique em "Resetar Q" para recomeçar.</div>`;
+        }
+        return true;
+    }
+
+    // Treino de 1 episódio com animação
+    async function trainOneEpisodeAnimated() {
+        if (!isReady || trainingLock) return;
+        trainingLock = true;
+        const trainBtn = document.getElementById('trainOneBtn');
+        const batchBtn = document.getElementById('trainBatchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        trainBtn.disabled = true;
+        batchBtn.disabled = true;
+        resetBtn.disabled = true;
+        const alpha = parseFloat(alphaSlider.value);
+        const gamma = parseFloat(gammaSlider.value);
+        const epsilon = parseFloat(epsilonSlider.value);
+        const stepPen = parseFloat(stepPenaltySlider.value);
+        const goalRew = parseFloat(goalRewardSlider.value);
+        const speed = parseInt(speedSlider.value);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        await pyodide.runPythonAsync(`reset_manual_state()`);
+        let state = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = state;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        let totalReward = 0;
+        let steps = 0;
+        let isGoal = false;
+        while (!isGoal && steps < 200) {
+            const action = await pyodide.runPythonAsync(`agent.choose_action(${JSON.stringify(state)})`);
+            const stepResult = await pyodide.runPythonAsync(`
+import json
+state = ${JSON.stringify(state)}
+action = ${action}
+next_state = env.get_next_state(state, action)
+reward = env.get_reward(next_state)
+td_target, td_error = agent.update(state, action, next_state, reward)
+json.dumps({'next_state': list(next_state), 'reward': float(reward), 'action': int(action), 'old_q': float(agent.q_table[state][action]), 'new_q': float(agent.q_table[state][action]), 'is_goal': env.is_goal(next_state)})
+            `);
+            const step = JSON.parse(stepResult);
+            state = step.next_state;
+            currentAgentState = state;
+            totalReward += step.reward;
+            steps++;
+            drawMaze(currentAgentState[0], currentAgentState[1]);
+            await updateQBarsFromState();
+            explanationDiv.innerHTML = `<i class="fas fa-play"></i> Passo ${steps}: ${['↑','↓','←','→'][step.action]} → (${state[0]},${state[1]}) | recompensa: ${step.reward.toFixed(2)} | Q novo: ${step.new_q.toFixed(3)}`;
+            if (step.is_goal) {
+                isGoal = true;
+                explanationDiv.innerHTML += `<div style="margin-top:8px; background:#c6f6d5; padding:8px; border-radius:12px;">🧀 Queijo encontrado em ${steps} passos! Recompensa total: ${totalReward.toFixed(2)}</div>`;
+            }
+            await new Promise(r => setTimeout(r, speed));
+        }
+        await pyodide.runPythonAsync(`agent.rewards_history.append(${totalReward})`);
+        episodeCount++;
+        lastReward = totalReward;
+        updateMetrics();
+        trainingLock = false;
+        trainBtn.disabled = false;
+        batchBtn.disabled = false;
+        resetBtn.disabled = false;
+    }
+
+    // Treino de 100 episódios em lote (assíncrono, com barra de progresso)
+    async function trainBatchAsync() {
+        if (!isReady || trainingLock) return;
+        trainingLock = true;
+        const trainBtn = document.getElementById('trainOneBtn');
+        const batchBtn = document.getElementById('trainBatchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        trainBtn.disabled = true;
+        batchBtn.disabled = true;
+        resetBtn.disabled = true;
+        const alpha = parseFloat(alphaSlider.value);
+        const gamma = parseFloat(gammaSlider.value);
+        const epsilon = parseFloat(epsilonSlider.value);
+        const stepPen = parseFloat(stepPenaltySlider.value);
+        const goalRew = parseFloat(goalRewardSlider.value);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        const totalEp = 100;
+        const batchSize = 10;
+        const progressDiv = document.getElementById('batchProgress');
+        const fillDiv = document.getElementById('batchFill');
+        progressDiv.style.display = 'block';
+        for (let i = 0; i < totalEp; i += batchSize) {
+            const epToDo = Math.min(batchSize, totalEp - i);
+            await pyodide.runPythonAsync(`for _ in range(${epToDo}): agent.train_episode()`);
+            episodeCount += epToDo;
+            const lastRew = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
+            lastReward = lastRew;
+            updateMetrics();
+            const progress = ((i + epToDo) / totalEp) * 100;
+            fillDiv.style.width = `${progress}%`;
+            await new Promise(r => setTimeout(r, 10));
+        }
+        const finalState = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = finalState;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await updateQBarsFromState();
+        progressDiv.style.display = 'none';
+        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 100 episódios treinados. Última recompensa: ${lastReward.toFixed(2)}. O rato agora conhece o melhor caminho!`;
+        trainingLock = false;
+        trainBtn.disabled = false;
+        batchBtn.disabled = false;
+        resetBtn.disabled = false;
+    }
+
+    // Reset da tabela Q
+    async function resetAgent() {
+        if (!isReady || trainingLock) return;
+        await pyodide.runPythonAsync(`agent.reset()`);
+        episodeCount = 0;
+        lastReward = 0;
+        updateMetrics();
+        await pyodide.runPythonAsync(`reset_manual_state()`);
+        currentAgentState = await pyodide.runPythonAsync(`get_agent_state()`);
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await updateQBarsFromState();
+        explanationDiv.innerHTML = "<i class='fas fa-trash-alt'></i> Tabela Q zerada. O rato precisa aprender de novo!";
+    }
+
+    // ========== EVENTOS DE CLICK NO CANVAS ==========
+    function handleCanvasClick(e) {
+        if (!isReady || trainingLock) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        const rows = mazeData.length;
+        const cols = mazeData[0].length;
+        const cellW = canvas.width / cols;
+        const cellH = canvas.height / rows;
+        const col = Math.floor(mouseX / cellW);
+        const row = Math.floor(mouseY / cellH);
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            if (editGoal) {
+                // Editar queijo: não pode colocar em cima do rato
+                if (currentAgentState[0] === row && currentAgentState[1] === col) {
+                    explanationDiv.innerHTML = "<i class='fas fa-exclamation-triangle'></i> Não é possível colocar o queijo em cima do rato!";
+                    return;
+                }
+                for (let i=0; i<rows; i++)
+                    for (let j=0; j<cols; j++)
+                        if (mazeData[i][j] === 2) mazeData[i][j] = 0;
+                mazeData[row][col] = 2;
+                drawMaze(currentAgentState[0], currentAgentState[1]);
+                syncMazeToPython();
+                return;
+            }
+            // Movimento do rato: apenas se adjacente e não for parede
+            const dr = Math.abs(row - currentAgentState[0]);
+            const dc = Math.abs(col - currentAgentState[1]);
+            if (dr + dc === 1 && mazeData[row][col] !== 1) {
+                moveAgentTo(row, col);
+            } else if (mazeData[row][col] !== 2) {
+                // Editar parede: não pode colocar parede na posição do rato nem no queijo
+                if ((row === currentAgentState[0] && col === currentAgentState[1]) || mazeData[row][col] === 2) return;
+                if (mazeData[row][col] === 0) mazeData[row][col] = 1;
+                else if (mazeData[row][col] === 1) mazeData[row][col] = 0;
+                drawMaze(currentAgentState[0], currentAgentState[1]);
+                syncMazeToPython();
+            }
+        }
+    }
+
+    canvas.addEventListener('click', handleCanvasClick);
+
+    // Botões do editor
+    document.getElementById('clearWallsBtn').onclick = () => {
+        for (let i=0; i<mazeData.length; i++)
+            for (let j=0; j<mazeData[0].length; j++)
+                if (mazeData[i][j] !== 2 && !(i===currentAgentState[0] && j===currentAgentState[1])) mazeData[i][j] = 0;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        syncMazeToPython();
+    };
+    document.getElementById('randomMazeBtn').onclick = async () => {
+        const n = mazeData.length;
+        let newMaze = Array(n).fill().map(() => Array(n).fill(0));
+        newMaze[n-1][n-1] = 2; // queijo no canto
+        for (let i=0; i<n; i++) {
+            for (let j=0; j<n; j++) {
+                if ((i===0 && j===0) || (i===n-1 && j===n-1)) continue;
+                if (Math.random() < 0.3) newMaze[i][j] = 1;
+            }
+        }
+        // Garantir caminho e que a posição inicial não seja parede
+        if (!hasPath(newMaze, [0,0], [n-1,n-1])) {
+            for (let i=0; i<n; i++) {
+                for (let j=0; j<n; j++) {
+                    if (newMaze[i][j] === 1 && Math.random() < 0.5) newMaze[i][j] = 0;
+                    if (hasPath(newMaze, [0,0], [n-1,n-1])) break;
+                }
+            }
+        }
+        newMaze[0][0] = 0; // garantir posição inicial livre
+        mazeData = newMaze;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await syncMazeToPython();
+    };
+    document.getElementById('resetMazeBtn').onclick = async () => {
+        mazeData = generateEmptyMaze(size, true);
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await syncMazeToPython();
+    };
+    document.getElementById('resizeMazeBtn').onclick = async () => {
+        const newSize = parseInt(sizeSelect.value);
+        size = newSize;
+        mazeData = generateEmptyMaze(size, true);
+        currentAgentState = [0, 0];
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await syncMazeToPython();
+    };
+    document.getElementById('editGoalCheckbox').onchange = (e) => { editGoal = e.target.checked; };
+
+    // Botões principais
+    document.getElementById('trainOneBtn').onclick = trainOneEpisodeAnimated;
+    document.getElementById('trainBatchBtn').onclick = trainBatchAsync;
+    document.getElementById('resetBtn').onclick = resetAgent;
+
+    // ========== INICIALIZAÇÃO DO PYODIDE ==========
     async function loadPyodideAndInit() {
-        pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/" });
-        await pyodide.loadPackage(["numpy"]);
-        await pyodide.runPythonAsync(`
+        try {
+            pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/" });
+            await pyodide.loadPackage(["numpy"]);
+            await pyodide.runPythonAsync(`
 import numpy as np
 import json
 
@@ -693,257 +964,32 @@ def get_maze():
 
 def get_q_values_at(state):
     return agent.get_q_values(tuple(state))
-        `);
-        mazeData = generateEmptyMaze(5, true);
-        await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
-        currentAgentState = await pyodide.runPythonAsync(`get_agent_state()`);
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await updateQBarsFromState();
-        isReady = true;
-        statusSpan.innerText = "Ambiente pronto";
-        statusBadgeIcon.className = "fas fa-check-circle";
-        setTimeout(() => {
-            const overlay = document.getElementById('loadingOverlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-            }, 500);
-        }, 3000);
-    }
-
-    async function moveAgentTo(targetRow, targetCol) {
-        if (!isReady) return false;
-        const [row, col] = currentAgentState;
-        const dr = targetRow - row, dc = targetCol - col;
-        if (Math.abs(dr) + Math.abs(dc) !== 1) return false;
-        let actionIdx = -1;
-        if (dr === -1 && dc === 0) actionIdx = 0;
-        else if (dr === 1 && dc === 0) actionIdx = 1;
-        else if (dr === 0 && dc === -1) actionIdx = 2;
-        else if (dr === 0 && dc === 1) actionIdx = 3;
-        else return false;
-        const alpha = parseFloat(alphaSlider.value);
-        const gamma = parseFloat(gammaSlider.value);
-        const epsilon = parseFloat(epsilonSlider.value);
-        const stepPen = parseFloat(stepPenaltySlider.value);
-        const goalRew = parseFloat(goalRewardSlider.value);
-        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        const result = await pyodide.runPythonAsync(`
-import json
-data = manual_step(${actionIdx})
-json.dumps(data)
-        `);
-        const step = JSON.parse(result);
-        currentAgentState = step.next_state;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await updateQBarsFromState();
-        const bestNext = await pyodide.runPythonAsync(`np.max(agent.q_table[${JSON.stringify(step.next_state)}]).item()`);
-        const actionName = ['↑','↓','←','→'][step.action];
-        explanationDiv.innerHTML = `
-            <div style="background:#e2e8f0; border-radius:12px; padding:12px;">
-                <b><i class="fas fa-brain"></i> Movimento:</b> ${actionName} → (${step.next_state[0]},${step.next_state[1]})<br>
-                <b>Recompensa: ${step.reward.toFixed(2)}</b> &nbsp; γ=${gamma} α=${alpha}<br>
-                <b>Q(antigo)=${step.old_q.toFixed(3)}</b> &nbsp; maxQ(s')=${bestNext.toFixed(3)}<br>
-                <b>TD target = ${step.td_target.toFixed(3)}</b> &nbsp; TD erro = ${step.td_error.toFixed(3)}<br>
-                <b style="color:#2c7cb6;">✅ Novo Q = ${step.new_q.toFixed(3)}</b>
-            </div>
-        `;
-        if (step.is_goal) {
-            explanationDiv.innerHTML += `<div style="margin-top:12px; background:#c6f6d5; padding:8px; border-radius:12px;">🧀 Você encontrou o queijo! Clique em "Resetar Q" para recomeçar.</div>`;
-        }
-        return true;
-    }
-
-    async function trainOneEpisodeAnimated() {
-        if (!isReady || trainingLock) return;
-        trainingLock = true;
-        const alpha = parseFloat(alphaSlider.value);
-        const gamma = parseFloat(gammaSlider.value);
-        const epsilon = parseFloat(epsilonSlider.value);
-        const stepPen = parseFloat(stepPenaltySlider.value);
-        const goalRew = parseFloat(goalRewardSlider.value);
-        const speed = parseInt(speedSlider.value);
-        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        await pyodide.runPythonAsync(`reset_manual_state()`);
-        let state = await pyodide.runPythonAsync(`get_agent_state()`);
-        currentAgentState = state;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        let totalReward = 0;
-        let steps = 0;
-        let isGoal = false;
-        while (!isGoal && steps < 200) {
-            const action = await pyodide.runPythonAsync(`agent.choose_action(${JSON.stringify(state)})`);
-            const stepResult = await pyodide.runPythonAsync(`
-import json
-state = ${JSON.stringify(state)}
-action = ${action}
-next_state = env.get_next_state(state, action)
-reward = env.get_reward(next_state)
-td_target, td_error = agent.update(state, action, next_state, reward)
-json.dumps({'next_state': list(next_state), 'reward': float(reward), 'action': int(action), 'old_q': float(agent.q_table[state][action]), 'new_q': float(agent.q_table[state][action]), 'is_goal': env.is_goal(next_state)})
             `);
-            const step = JSON.parse(stepResult);
-            state = step.next_state;
-            currentAgentState = state;
-            totalReward += step.reward;
-            steps++;
+            mazeData = generateEmptyMaze(5, true);
+            await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
+            currentAgentState = await pyodide.runPythonAsync(`get_agent_state()`);
             drawMaze(currentAgentState[0], currentAgentState[1]);
             await updateQBarsFromState();
-            explanationDiv.innerHTML = `<i class="fas fa-play"></i> Passo ${steps}: ${['↑','↓','←','→'][step.action]} → (${state[0]},${state[1]}) | recompensa: ${step.reward.toFixed(2)} | Q novo: ${step.new_q.toFixed(3)}`;
-            if (step.is_goal) {
-                isGoal = true;
-                explanationDiv.innerHTML += `<div style="margin-top:8px; background:#c6f6d5; padding:8px; border-radius:12px;">🧀 Queijo encontrado em ${steps} passos! Recompensa total: ${totalReward.toFixed(2)}</div>`;
-            }
-            await new Promise(r => setTimeout(r, speed));
-        }
-        await pyodide.runPythonAsync(`agent.rewards_history.append(${totalReward})`);
-        episodeCount++;
-        lastReward = totalReward;
-        updateMetrics();
-        trainingLock = false;
-    }
-
-    async function trainBatchAsync() {
-        if (!isReady || trainingLock) return;
-        trainingLock = true;
-        const alpha = parseFloat(alphaSlider.value);
-        const gamma = parseFloat(gammaSlider.value);
-        const epsilon = parseFloat(epsilonSlider.value);
-        const stepPen = parseFloat(stepPenaltySlider.value);
-        const goalRew = parseFloat(goalRewardSlider.value);
-        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        const totalEp = 100;
-        const batchSize = 10;
-        const progressDiv = document.getElementById('batchProgress');
-        const fillDiv = document.getElementById('batchFill');
-        progressDiv.style.display = 'block';
-        for (let i = 0; i < totalEp; i += batchSize) {
-            const epToDo = Math.min(batchSize, totalEp - i);
-            await pyodide.runPythonAsync(`for _ in range(${epToDo}): agent.train_episode()`);
-            episodeCount += epToDo;
-            const lastRew = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
-            lastReward = lastRew;
-            updateMetrics();
-            const progress = ((i + epToDo) / totalEp) * 100;
-            fillDiv.style.width = `${progress}%`;
-            await new Promise(r => setTimeout(r, 10));
-        }
-        const finalState = await pyodide.runPythonAsync(`get_agent_state()`);
-        currentAgentState = finalState;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await updateQBarsFromState();
-        progressDiv.style.display = 'none';
-        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 100 episódios treinados. Última recompensa: ${lastReward.toFixed(2)}. O rato agora conhece o melhor caminho!`;
-        trainingLock = false;
-    }
-
-    async function resetAgent() {
-        if (!isReady || trainingLock) return;
-        await pyodide.runPythonAsync(`agent.reset()`);
-        episodeCount = 0;
-        lastReward = 0;
-        updateMetrics();
-        await pyodide.runPythonAsync(`reset_manual_state()`);
-        currentAgentState = await pyodide.runPythonAsync(`get_agent_state()`);
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await updateQBarsFromState();
-        explanationDiv.innerHTML = "<i class='fas fa-trash-alt'></i> Tabela Q zerada. O rato precisa aprender de novo!";
-    }
-
-    function handleCanvasClick(e) {
-        if (!isReady || trainingLock) return;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const mouseX = (e.clientX - rect.left) * scaleX;
-        const mouseY = (e.clientY - rect.top) * scaleY;
-        const rows = mazeData.length;
-        const cols = mazeData[0].length;
-        const cellW = canvas.width / cols;
-        const cellH = canvas.height / rows;
-        const col = Math.floor(mouseX / cellW);
-        const row = Math.floor(mouseY / cellH);
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
-            if (editGoal) {
-                for (let i=0; i<rows; i++)
-                    for (let j=0; j<cols; j++)
-                        if (mazeData[i][j] === 2) mazeData[i][j] = 0;
-                mazeData[row][col] = 2;
-                drawMaze(currentAgentState[0], currentAgentState[1]);
-                syncMazeToPython();
-                return;
-            }
-            // movimento do rato: apenas se for adjacente
-            const dr = Math.abs(row - currentAgentState[0]);
-            const dc = Math.abs(col - currentAgentState[1]);
-            if (dr + dc === 1 && mazeData[row][col] !== 1) {
-                moveAgentTo(row, col);
-            } else if (mazeData[row][col] !== 2) {
-                // editar parede
-                if (mazeData[row][col] === 0) mazeData[row][col] = 1;
-                else if (mazeData[row][col] === 1) mazeData[row][col] = 0;
-                drawMaze(currentAgentState[0], currentAgentState[1]);
-                syncMazeToPython();
-            }
+            isReady = true;
+            statusSpan.innerText = "Ambiente pronto";
+            statusBadgeIcon.className = "fas fa-check-circle";
+            // Mostra a interface após 2 segundos de loading
+            setTimeout(() => {
+                const overlay = document.getElementById('loadingOverlay');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                }, 500);
+            }, 2500);
+        } catch (err) {
+            console.error(err);
+            statusSpan.innerText = "Erro ao carregar";
+            statusBadgeIcon.className = "fas fa-exclamation-triangle";
         }
     }
 
-    canvas.addEventListener('click', handleCanvasClick);
-    document.getElementById('clearWallsBtn').onclick = () => {
-        for (let i=0; i<mazeData.length; i++)
-            for (let j=0; j<mazeData[0].length; j++)
-                if (mazeData[i][j] !== 2) mazeData[i][j] = 0;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        syncMazeToPython();
-    };
-    document.getElementById('randomMazeBtn').onclick = async () => {
-        const n = mazeData.length;
-        let newMaze = Array(n).fill().map(() => Array(n).fill(0));
-        newMaze[n-1][n-1] = 2; // queijo no canto
-        for (let i=0; i<n; i++) {
-            for (let j=0; j<n; j++) {
-                if ((i===0 && j===0) || (i===n-1 && j===n-1)) continue;
-                if (Math.random() < 0.3) newMaze[i][j] = 1;
-            }
-        }
-        if (!hasPath(newMaze, [0,0], [n-1,n-1])) {
-            // garante um caminho abrindo algumas células
-            for (let i=0; i<n; i++) {
-                for (let j=0; j<n; j++) {
-                    if (newMaze[i][j] === 1 && Math.random() < 0.5) newMaze[i][j] = 0;
-                    if (hasPath(newMaze, [0,0], [n-1,n-1])) break;
-                }
-            }
-        }
-        mazeData = newMaze;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await syncMazeToPython();
-    };
-    document.getElementById('resetMazeBtn').onclick = async () => {
-        mazeData = generateEmptyMaze(size, true);
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await syncMazeToPython();
-    };
-    document.getElementById('resizeMazeBtn').onclick = async () => {
-        const newSize = parseInt(sizeSelect.value);
-        size = newSize;
-        mazeData = generateEmptyMaze(size, true);
-        currentAgentState = [0, 0];
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        await syncMazeToPython();
-    };
-    document.getElementById('editGoalCheckbox').onchange = (e) => { editGoal = e.target.checked; };
-
-    document.getElementById('trainOneBtn').onclick = trainOneEpisodeAnimated;
-    document.getElementById('trainBatchBtn').onclick = trainBatchAsync;
-    document.getElementById('resetBtn').onclick = resetAgent;
-
-    loadPyodideAndInit().catch(err => {
-        console.error(err);
-        statusSpan.innerText = "Erro ao carregar";
-        statusBadgeIcon.className = "fas fa-exclamation-triangle";
-    });
+    loadPyodideAndInit();
 </script>
 </body>
 </html>
