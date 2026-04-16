@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q‑Learning Maze · Aprendizado por Reforço Interativo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <title>Q‑Learning Maze · Rato e Queijo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #eef2f5;
             font-family: 'Inter', sans-serif;
@@ -27,7 +23,6 @@
             box-shadow: 0 12px 30px rgba(0,0,0,0.08);
             overflow: hidden;
         }
-        /* Header com loading */
         .header {
             background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
             padding: 1.2rem 2rem;
@@ -38,15 +33,8 @@
             flex-wrap: wrap;
             gap: 1rem;
         }
-        .title-section h1 {
-            font-size: 1.6rem;
-            font-weight: 600;
-        }
-        .title-section p {
-            font-size: 0.85rem;
-            opacity: 0.8;
-            margin-top: 0.2rem;
-        }
+        .title-section h1 { font-size: 1.6rem; font-weight: 600; }
+        .title-section p { font-size: 0.85rem; opacity: 0.8; margin-top: 0.2rem; }
         .loading-status {
             background: rgba(255,255,255,0.12);
             backdrop-filter: blur(4px);
@@ -57,23 +45,16 @@
             align-items: center;
             gap: 8px;
         }
-        /* Layout principal */
         .main-grid {
             display: flex;
             flex-wrap: wrap;
             gap: 1.5rem;
             padding: 1.8rem 2rem;
         }
-        .sidebar {
-            flex: 1.2;
-            min-width: 260px;
-        }
-        .content {
-            flex: 2.5;
-            min-width: 320px;
-        }
+        .sidebar { flex: 1.2; min-width: 260px; }
+        .content { flex: 2.5; min-width: 320px; }
         .card {
-            background: #ffffff;
+            background: white;
             border-radius: 1.2rem;
             padding: 1.2rem;
             margin-bottom: 1.5rem;
@@ -89,9 +70,7 @@
             gap: 8px;
             color: #1e2f41;
         }
-        .param-group {
-            margin-bottom: 1.2rem;
-        }
+        .param-group { margin-bottom: 1.2rem; }
         label {
             display: flex;
             justify-content: space-between;
@@ -100,10 +79,7 @@
             margin-bottom: 0.3rem;
             color: #2c3e50;
         }
-        input[type="range"] {
-            width: 100%;
-            accent-color: #3b82f6;
-        }
+        input[type="range"] { width: 100%; accent-color: #3b82f6; }
         .value-badge {
             background: #eef2f9;
             padding: 0.2rem 0.6rem;
@@ -125,10 +101,7 @@
             align-items: center;
             gap: 6px;
         }
-        button:hover {
-            background: #2c4c7a;
-            transform: translateY(-1px);
-        }
+        button:hover { background: #2c4c7a; transform: translateY(-1px); }
         .btn-primary { background: #2c7cb6; }
         .btn-warning { background: #b45330; }
         .btn-success { background: #2f855a; }
@@ -149,11 +122,7 @@
             border-radius: 60px;
             justify-content: center;
         }
-        .maze-editor {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        .maze-editor { display: flex; flex-direction: column; align-items: center; }
         .maze-canvas {
             background: #fefefe;
             border-radius: 1rem;
@@ -178,11 +147,7 @@
             gap: 10px;
             margin-bottom: 8px;
         }
-        .q-bar-label {
-            width: 35px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
+        .q-bar-label { width: 35px; font-weight: 600; font-size: 0.9rem; }
         .q-bar-bg {
             flex: 1;
             height: 28px;
@@ -251,11 +216,11 @@
 <div class="app-container">
     <div class="header">
         <div class="title-section">
-            <h1><i class="fas fa-robot"></i> Q‑Learning Maze</h1>
-            <p>Aprendizado por Reforço interativo · entenda Q‑Learning na prática</p>
+            <h1><i class="fas fa-cheese"></i> Q‑Learning Maze · Rato e Queijo</h1>
+            <p>Aprendizado por Reforço interativo — o rato aprende a encontrar o queijo</p>
         </div>
         <div id="loadingIndicator" class="loading-status">
-            <i class="fas fa-spinner fa-pulse"></i> <span>Carregando ambiente...</span>
+            <i class="fas fa-spinner fa-pulse"></i> <span>Inicializando ambiente...</span>
         </div>
     </div>
 
@@ -274,14 +239,14 @@
                 <div class="param-group">
                     <label>ε (exploração) <span id="epsilonVal" class="value-badge">0.20</span></label>
                     <input type="range" id="epsilonSlider" min="0.01" max="0.9" step="0.01" value="0.2">
-                    <div style="font-size:0.7rem; color:#5a6e8c;">maior ε = mais ações aleatórias (exploração)</div>
+                    <div style="font-size:0.7rem; color:#5a6e8c;">↑ maior ε = mais tentativas aleatórias (exploração)</div>
                 </div>
                 <div class="param-group">
                     <label>Penalidade por passo <span id="stepPenaltyVal" class="value-badge">-0.05</span></label>
                     <input type="range" id="stepPenaltySlider" min="-0.5" max="-0.01" step="0.01" value="-0.05">
                 </div>
                 <div class="param-group">
-                    <label>Recompensa do tesouro <span id="goalRewardVal" class="value-badge">10.0</span></label>
+                    <label>Recompensa do queijo <span id="goalRewardVal" class="value-badge">10.0</span></label>
                     <input type="range" id="goalRewardSlider" min="1" max="20" step="0.5" value="10">
                 </div>
             </div>
@@ -309,15 +274,25 @@
             <div class="card">
                 <h3><i class="fas fa-draw-polygon"></i> Editor do Labirinto</h3>
                 <div class="maze-editor">
+                    <div style="margin-bottom: 8px;">
+                        <label>Tamanho: <select id="mazeSizeSelect">
+                            <option value="4">4x4</option>
+                            <option value="5" selected>5x5</option>
+                            <option value="6">6x6</option>
+                            <option value="7">7x7</option>
+                            <option value="8">8x8</option>
+                        </select></label>
+                        <button id="resizeMazeBtn" class="btn-secondary" style="margin-left: 8px;">Redimensionar</button>
+                    </div>
                     <canvas id="mazeCanvas" width="400" height="400" class="maze-canvas" style="width:100%; max-width:400px; height:auto"></canvas>
                     <div class="editor-actions">
                         <button id="clearWallsBtn" class="btn-secondary"><i class="fas fa-eraser"></i> Limpar paredes</button>
                         <button id="randomMazeBtn" class="btn-secondary"><i class="fas fa-random"></i> Aleatório</button>
                         <button id="resetMazeBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Padrão</button>
-                        <label style="display:inline-flex; align-items:center; gap:6px;"><input type="checkbox" id="editGoalCheckbox"> Editar tesouro</label>
+                        <label style="display:inline-flex; align-items:center; gap:6px;"><input type="checkbox" id="editGoalCheckbox"> Editar queijo</label>
                     </div>
                     <div style="font-size:0.7rem; margin-top: 8px; color:#5a6e8c;">
-                        Clique nas células: █ parede | ⭐ tesouro (apenas um)
+                        Clique nas células: 🧱 parede | 🧀 queijo (apenas um)
                     </div>
                 </div>
             </div>
@@ -339,8 +314,8 @@
     </div>
 
     <div class="footer">
-        <span>🧠 Q‑Learning: o agente aprende por tentativa e erro, atualizando a tabela Q.</span>
-        <a href="https://github.com/samuel-sanches-BR/Q-Learning-Maze-Pyodide" target="_blank" class="github-link">
+        <span>🧀 Q‑Learning: o rato aprende por tentativa e erro até encontrar o queijo.</span>
+        <a href="https://github.com/samuel-sanches-BR/Q-Learning-Maze" target="_blank" class="github-link">
             <i class="fab fa-github"></i> GitHub / Código-fonte
         </a>
     </div>
@@ -356,6 +331,7 @@
     let editGoal = false;
     let episodeCount = 0;
     let lastReward = 0;
+    let size = 5;
 
     const canvas = document.getElementById('mazeCanvas');
     const ctx = canvas.getContext('2d');
@@ -366,6 +342,7 @@
     const epsilonSlider = document.getElementById('epsilonSlider');
     const stepPenaltySlider = document.getElementById('stepPenaltySlider');
     const goalRewardSlider = document.getElementById('goalRewardSlider');
+    const sizeSelect = document.getElementById('mazeSizeSelect');
 
     function updateParamLabels() {
         document.getElementById('alphaVal').innerText = parseFloat(alphaSlider.value).toFixed(2);
@@ -383,31 +360,32 @@
 
     function drawMaze(agentRow, agentCol) {
         if (!mazeData) return;
-        const size = 400;
         const rows = mazeData.length;
         const cols = mazeData[0].length;
-        const cellW = size / cols;
-        const cellH = size / rows;
-        canvas.width = size;
-        canvas.height = size;
-        ctx.clearRect(0, 0, size, size);
+        const cellW = canvas.width / cols;
+        const cellH = canvas.height / rows;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < cols; j++) {
                 const x = j * cellW;
                 const y = i * cellH;
                 if (mazeData[i][j] === 1) {
-                    ctx.fillStyle = "#6c757d";
+                    ctx.fillStyle = "#8B5A2B";
                     ctx.fillRect(x, y, cellW, cellH);
-                    ctx.fillStyle = "#343a40";
+                    ctx.fillStyle = "#A0522D";
                     ctx.fillRect(x+2, y+2, cellW-4, cellH-4);
+                    ctx.fillStyle = "#CD853F";
+                    for (let k = 0; k < 3; k++) {
+                        ctx.fillRect(x+5+ k*8, y+5, 3, cellH-10);
+                    }
                 } else if (mazeData[i][j] === 2) {
-                    ctx.fillStyle = "#ffc107";
+                    ctx.fillStyle = "#FFD966";
                     ctx.fillRect(x, y, cellW, cellH);
-                    ctx.fillStyle = "#b45330";
+                    ctx.fillStyle = "#E6A817";
                     ctx.font = `${cellW * 0.5}px "Segoe UI"`;
-                    ctx.fillText("★", x + cellW*0.4, y + cellH*0.7);
+                    ctx.fillText("🧀", x + cellW*0.3, y + cellH*0.7);
                 } else {
-                    ctx.fillStyle = "#ffffff";
+                    ctx.fillStyle = "#f8f9fa";
                     ctx.fillRect(x, y, cellW, cellH);
                     ctx.strokeStyle = "#cbd5e1";
                     ctx.strokeRect(x, y, cellW, cellH);
@@ -417,13 +395,22 @@
         if (agentRow !== undefined && agentCol !== undefined && mazeData[agentRow][agentCol] !== 1) {
             const x = agentCol * cellW;
             const y = agentRow * cellH;
-            ctx.fillStyle = "#3182ce";
+            ctx.fillStyle = "#6C757D";
             ctx.beginPath();
-            ctx.arc(x + cellW/2, y + cellH/2, cellW*0.25, 0, 2*Math.PI);
+            ctx.ellipse(x + cellW*0.5, y + cellH*0.6, cellW*0.2, cellW*0.15, 0, 0, 2*Math.PI);
             ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.font = `${cellW * 0.35}px "Segoe UI"`;
-            ctx.fillText("●", x + cellW*0.43, y + cellH*0.65);
+            ctx.fillStyle = "#495057";
+            ctx.beginPath();
+            ctx.arc(x + cellW*0.35, y + cellH*0.45, cellW*0.08, 0, 2*Math.PI);
+            ctx.arc(x + cellW*0.65, y + cellH*0.45, cellW*0.08, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = "#F4A261";
+            ctx.beginPath();
+            ctx.ellipse(x + cellW*0.5, y + cellH*0.55, cellW*0.12, cellW*0.1, 0, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.font = `${cellW * 0.3}px "Segoe UI"`;
+            ctx.fillText("🐭", x + cellW*0.35, y + cellH*0.65);
         }
     }
 
@@ -442,15 +429,41 @@
         document.getElementById('lastReward').innerText = lastReward.toFixed(2);
     }
 
+    function generateEmptyMaze(n, withGoalAtEnd = true) {
+        let maze = Array(n).fill().map(() => Array(n).fill(0));
+        if (withGoalAtEnd) maze[n-1][n-1] = 2;
+        return maze;
+    }
+
+    function resizeMaze(newSize) {
+        size = newSize;
+        let newMaze = generateEmptyMaze(size, true);
+        if (mazeData && mazeData.length === size) return;
+        mazeData = newMaze;
+        goalPos = [size-1, size-1];
+        currentAgentState = [0, 0];
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        syncMazeToPython();
+    }
+
+    async function syncMazeToPython() {
+        if (!isReady) return;
+        await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
+        const newState = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = newState;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
+        updateQBars(qvals);
+    }
+
     async function loadPyodideAndInit() {
         loadingSpan.innerText = "Carregando Pyodide...";
         pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/" });
-        loadingSpan.innerText = "Carregando pacotes...";
+        loadingSpan.innerText = "Preparando ambiente Python...";
         await pyodide.loadPackage(["numpy"]);
         await pyodide.runPythonAsync(`
 import numpy as np
 import json
-from js import document
 
 class MazeEnv:
     def __init__(self, step_penalty=-0.05, goal_reward=10.0):
@@ -464,7 +477,6 @@ class MazeEnv:
         self.start = (0,0)
         self.goal = tuple(np.argwhere(self.maze == 2)[0])
         self.actions = [(-1,0),(1,0),(0,-1),(0,1)]
-        self.action_names = ['↑','↓','←','→']
         self.n_rows, self.n_cols = self.maze.shape
         self.step_penalty = step_penalty
         self.goal_reward = goal_reward
@@ -473,6 +485,7 @@ class MazeEnv:
         self.maze = np.array(new_maze)
         self.goal = tuple(np.argwhere(self.maze == 2)[0])
         self.n_rows, self.n_cols = self.maze.shape
+        self.start = (0,0)
 
     def is_wall(self, pos): return self.maze[pos] == 1
     def is_goal(self, pos): return pos == self.goal
@@ -581,34 +594,21 @@ def reset_manual_state():
 def get_maze():
     return env.maze.tolist()
 
-def set_agent_start(new_start):
-    env.start = tuple(new_start)
-
 def get_q_values_at(state):
     return agent.get_q_values(tuple(state))
         `);
-        const mazeInfo = await pyodide.runPythonAsync(`json.dumps(get_maze())`);
-        mazeData = JSON.parse(mazeInfo);
+        mazeData = generateEmptyMaze(5, true);
+        await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
         const startState = await pyodide.runPythonAsync(`get_agent_state()`);
         currentAgentState = startState;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
         isReady = true;
-        loadingSpan.innerText = "Ambiente pronto!";
+        loadingSpan.innerText = "Ambiente pronto! Rato está aprendendo...";
         setTimeout(() => {
             document.querySelector('.loading-status').style.opacity = "0.7";
-        }, 1000);
-    }
-
-    async function syncMazeToPython() {
-        if (!isReady) return;
-        await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
-        const newState = await pyodide.runPythonAsync(`get_agent_state()`);
-        currentAgentState = newState;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
-        updateQBars(qvals);
+        }, 1200);
     }
 
     async function trainOneEpisode() {
@@ -629,7 +629,7 @@ def get_q_values_at(state):
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 1 episódio treinado. Recompensa: ${reward.toFixed(2)}`;
+        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 1 episódio treinado. Recompensa: ${reward.toFixed(2)}. O rato está aprendendo o caminho!`;
         if (manualMode) {
             await pyodide.runPythonAsync(`reset_manual_state()`);
             const resetState = await pyodide.runPythonAsync(`get_agent_state()`);
@@ -646,6 +646,7 @@ def get_q_values_at(state):
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
         await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        explanationDiv.innerHTML = "<i class='fas fa-spinner fa-pulse'></i> Treinando 100 episódios...";
         await pyodide.runPythonAsync(`agent.train_batch(100)`);
         episodeCount += 100;
         const lastRew = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
@@ -656,7 +657,7 @@ def get_q_values_at(state):
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 100 episódios treinados. Última recompensa: ${lastRew.toFixed(2)}`;
+        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 100 episódios treinados. Última recompensa: ${lastRew.toFixed(2)}. O rato agora conhece o melhor caminho!`;
         if (manualMode) {
             await pyodide.runPythonAsync(`reset_manual_state()`);
             const resetState = await pyodide.runPythonAsync(`get_agent_state()`);
@@ -676,7 +677,7 @@ def get_q_values_at(state):
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        explanationDiv.innerHTML = "<i class='fas fa-trash-alt'></i> Tabela Q zerada.";
+        explanationDiv.innerHTML = "<i class='fas fa-trash-alt'></i> Tabela Q zerada. O rato precisa aprender de novo!";
     }
 
     function handleCanvasClick(e) {
@@ -702,6 +703,7 @@ def get_q_values_at(state):
             } else {
                 if (mazeData[row][col] === 0) mazeData[row][col] = 1;
                 else if (mazeData[row][col] === 1) mazeData[row][col] = 0;
+                if (mazeData[row][col] === 2 && !editGoal) return;
             }
             drawMaze(currentAgentState[0], currentAgentState[1]);
             syncMazeToPython();
@@ -719,21 +721,19 @@ def get_q_values_at(state):
     document.getElementById('randomMazeBtn').onclick = () => {
         for (let i=0; i<mazeData.length; i++)
             for (let j=0; j<mazeData[0].length; j++)
-                if (mazeData[i][j] !== 2 && Math.random() < 0.25) mazeData[i][j] = 1;
+                if (mazeData[i][j] !== 2 && Math.random() < 0.3) mazeData[i][j] = 1;
                 else if (mazeData[i][j] !== 2) mazeData[i][j] = 0;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         syncMazeToPython();
     };
     document.getElementById('resetMazeBtn').onclick = async () => {
-        mazeData = [
-            [0,0,0,1,0],
-            [0,1,0,1,0],
-            [0,1,0,0,0],
-            [0,0,1,0,0],
-            [0,0,0,0,2]
-        ];
+        mazeData = generateEmptyMaze(size, true);
         drawMaze(currentAgentState[0], currentAgentState[1]);
         await syncMazeToPython();
+    };
+    document.getElementById('resizeMazeBtn').onclick = () => {
+        const newSize = parseInt(sizeSelect.value);
+        resizeMaze(newSize);
     };
     document.getElementById('editGoalCheckbox').onchange = (e) => { editGoal = e.target.checked; };
 
@@ -747,7 +747,7 @@ def get_q_values_at(state):
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        explanationDiv.innerHTML = "<i class='fas fa-gamepad'></i> Modo manual ativo. Clique nas setas para mover o agente.";
+        explanationDiv.innerHTML = "<i class='fas fa-gamepad'></i> Modo manual ativo. Clique nas setas para mover o rato e veja a conta do Q‑Learning.";
         if (!manualActionContainer) {
             manualActionContainer = document.createElement('div');
             manualActionContainer.className = 'action-buttons';
@@ -796,7 +796,7 @@ json.dumps(data)
             </div>
         `;
         if (step.is_goal) {
-            explanationDiv.innerHTML += `<div style="margin-top:12px; background:#c6f6d5; padding:8px; border-radius:12px;">🏆 Você chegou ao tesouro! Clique em "Resetar Q" para recomeçar.</div>`;
+            explanationDiv.innerHTML += `<div style="margin-top:12px; background:#c6f6d5; padding:8px; border-radius:12px;">🧀 Você encontrou o queijo! Clique em "Resetar Q" para recomeçar.</div>`;
             manualMode = false;
             if (manualActionContainer) manualActionContainer.style.display = 'none';
         }
