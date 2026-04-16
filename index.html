@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q‑Learning Maze · Rato e Queijo</title>
+    <title>🧀 Q‑Learning Maze · Rato e Queijo</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
@@ -15,6 +15,30 @@
             padding: 2rem 1.5rem;
             color: #1a2a3a;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1a2a3a, #0f1a24);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            transition: opacity 0.5s;
+        }
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+        .loading-canvas {
+            background: #2d3e4e;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+        }
+        .loading-text {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+        }
         .app-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -22,6 +46,7 @@
             border-radius: 2rem;
             box-shadow: 0 12px 30px rgba(0,0,0,0.08);
             overflow: hidden;
+            display: none;
         }
         .header {
             background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
@@ -213,14 +238,21 @@
     </style>
 </head>
 <body>
-<div class="app-container">
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+        <canvas id="loadingCanvas" width="200" height="200" class="loading-canvas"></canvas>
+        <div class="loading-text">Carregando ambiente... 🐭 aprendendo a encontrar o queijo 🧀</div>
+    </div>
+</div>
+
+<div class="app-container" id="appContainer">
     <div class="header">
         <div class="title-section">
             <h1><i class="fas fa-cheese"></i> Q‑Learning Maze · Rato e Queijo</h1>
             <p>Aprendizado por Reforço interativo — o rato aprende a encontrar o queijo</p>
         </div>
         <div id="loadingIndicator" class="loading-status">
-            <i class="fas fa-spinner fa-pulse"></i> <span>Inicializando ambiente...</span>
+            <i class="fas fa-spinner fa-pulse"></i> <span>Inicializando...</span>
         </div>
     </div>
 
@@ -322,12 +354,51 @@
 </div>
 
 <script>
+    // Animação de loading com rato
+    const loadingCanvas = document.getElementById('loadingCanvas');
+    const loadingCtx = loadingCanvas.getContext('2d');
+    let loadingFrame = 0;
+    function drawLoading() {
+        loadingCtx.clearRect(0, 0, 200, 200);
+        loadingCtx.fillStyle = '#2d3e4e';
+        loadingCtx.fillRect(0, 0, 200, 200);
+        const cell = 40;
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                if ((i===1 && j===1) || (i===1 && j===3) || (i===3 && j===2)) {
+                    loadingCtx.fillStyle = '#8B5A2B';
+                    loadingCtx.fillRect(j*cell, i*cell, cell, cell);
+                } else {
+                    loadingCtx.strokeStyle = '#aaa';
+                    loadingCtx.strokeRect(j*cell, i*cell, cell, cell);
+                }
+            }
+        }
+        loadingCtx.fillStyle = '#FFD966';
+        loadingCtx.fillRect(4*cell, 4*cell, cell, cell);
+        loadingCtx.fillStyle = '#E6A817';
+        loadingCtx.font = '25px sans-serif';
+        loadingCtx.fillText('🧀', 4*cell+10, 4*cell+30);
+        const step = (loadingFrame % 40) / 10;
+        const ratX = Math.min(4, Math.floor(step));
+        const ratY = Math.min(4, Math.floor(step));
+        loadingCtx.fillStyle = '#6C757D';
+        loadingCtx.beginPath();
+        loadingCtx.ellipse(ratX*cell+20, ratY*cell+25, 12, 10, 0, 0, 2*Math.PI);
+        loadingCtx.fill();
+        loadingCtx.fillStyle = 'black';
+        loadingCtx.font = '20px sans-serif';
+        loadingCtx.fillText('🐭', ratX*cell+12, ratY*cell+30);
+        loadingFrame++;
+        requestAnimationFrame(drawLoading);
+    }
+    drawLoading();
+
     let pyodide = null;
     let isReady = false;
     let manualMode = false;
     let currentAgentState = [0, 0];
     let mazeData = null;
-    let goalPos = [4, 4];
     let editGoal = false;
     let episodeCount = 0;
     let lastReward = 0;
@@ -435,17 +506,6 @@
         return maze;
     }
 
-    function resizeMaze(newSize) {
-        size = newSize;
-        let newMaze = generateEmptyMaze(size, true);
-        if (mazeData && mazeData.length === size) return;
-        mazeData = newMaze;
-        goalPos = [size-1, size-1];
-        currentAgentState = [0, 0];
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        syncMazeToPython();
-    }
-
     async function syncMazeToPython() {
         if (!isReady) return;
         await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
@@ -457,9 +517,7 @@
     }
 
     async function loadPyodideAndInit() {
-        loadingSpan.innerText = "Carregando Pyodide...";
         pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/" });
-        loadingSpan.innerText = "Preparando ambiente Python...";
         await pyodide.loadPackage(["numpy"]);
         await pyodide.runPythonAsync(`
 import numpy as np
@@ -605,10 +663,12 @@ def get_q_values_at(state):
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
         isReady = true;
-        loadingSpan.innerText = "Ambiente pronto! Rato está aprendendo...";
+        loadingSpan.innerText = "Ambiente pronto!";
+        document.getElementById('loadingOverlay').style.opacity = '0';
         setTimeout(() => {
-            document.querySelector('.loading-status').style.opacity = "0.7";
-        }, 1200);
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+        }, 500);
     }
 
     async function trainOneEpisode() {
@@ -619,8 +679,7 @@ def get_q_values_at(state):
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
         await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        const result = await pyodide.runPythonAsync(`agent.train_episode()`);
-        const reward = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
+        const reward = await pyodide.runPythonAsync(`agent.train_episode()[0].item()`);
         episodeCount++;
         lastReward = reward;
         updateMetrics();
@@ -699,11 +758,9 @@ def get_q_values_at(state):
                     for (let j=0; j<cols; j++)
                         if (mazeData[i][j] === 2) mazeData[i][j] = 0;
                 mazeData[row][col] = 2;
-                goalPos = [row, col];
             } else {
                 if (mazeData[row][col] === 0) mazeData[row][col] = 1;
                 else if (mazeData[row][col] === 1) mazeData[row][col] = 0;
-                if (mazeData[row][col] === 2 && !editGoal) return;
             }
             drawMaze(currentAgentState[0], currentAgentState[1]);
             syncMazeToPython();
@@ -731,9 +788,13 @@ def get_q_values_at(state):
         drawMaze(currentAgentState[0], currentAgentState[1]);
         await syncMazeToPython();
     };
-    document.getElementById('resizeMazeBtn').onclick = () => {
+    document.getElementById('resizeMazeBtn').onclick = async () => {
         const newSize = parseInt(sizeSelect.value);
-        resizeMaze(newSize);
+        size = newSize;
+        mazeData = generateEmptyMaze(size, true);
+        currentAgentState = [0, 0];
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await syncMazeToPython();
     };
     document.getElementById('editGoalCheckbox').onchange = (e) => { editGoal = e.target.checked; };
 
@@ -807,7 +868,10 @@ json.dumps(data)
     document.getElementById('resetBtn').onclick = resetAgent;
     document.getElementById('manualModeBtn').onclick = enableManualMode;
 
-    loadPyodideAndInit();
+    loadPyodideAndInit().catch(err => {
+        console.error(err);
+        loadingSpan.innerText = "Erro ao carregar. Recarregue a página.";
+    });
 </script>
 </body>
 </html>
