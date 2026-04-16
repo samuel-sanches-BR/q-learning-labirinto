@@ -34,7 +34,6 @@ layout: null
     .cell.cheese{background:#f1c40f}
     .cell.rat{background:#3498db}
     .cell.rat.cheese{background:linear-gradient(135deg,#3498db,#f1c40f)}
-    .cell.best{box-shadow:inset 0 0 0 2px #27ae60}
     .metrics{display:flex;gap:20px;flex-wrap:wrap}
     .metric{text-align:center}
     .metric-value{font-size:1.5em;font-weight:700;color:#2c3e50}
@@ -46,34 +45,29 @@ layout: null
     .q-value{position:absolute;top:2px;left:0;right:0;font-size:0.75em;font-weight:600}
     .log{max-height:150px;overflow-y:auto;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:4px;font-family:monospace;font-size:0.85em}
     .log-entry{padding:3px 0;border-bottom:1px solid #333}
-    .hidden{display:none!important}
     #status{padding:12px;border-radius:5px;margin:10px 0;text-align:center}
     .status-loading{background:#fff3cd;color:#856404}
     .status-ready{background:#d4edda;color:#155724}
     .status-error{background:#f8d7da;color:#721c24}
     .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    #loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 0.8s ease}
-    .loading-maze{display:grid;gap:4px;background:#2c3e50;padding:15px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+    #loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.8s ease}
+    .loading-maze{display:grid;gap:4px;background:#1a252f;padding:15px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.4)}
     .l-cell{width:50px;height:50px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.8em;transition:all 0.2s ease}
-    .l-empty{background:#ecf0f1}
-    .l-wall{background:#34495e}
-    .l-cheese{background:#f1c40f}
-    .l-rat{background:#3498db;box-shadow:0 0 15px rgba(52,152,219,0.5)}
-    .l-path{background:rgba(46,204,113,0.3)}
-    .loading-text{margin-top:25px;font-size:1.3em;color:white;font-weight:600}
-    .loading-sub{margin-top:8px;font-size:1em;color:rgba(255,255,255,0.8)}
+    .l-empty{background:#34495e}
+    .l-wall{background:#111820}
+    .l-cheese{background:#34495e}
+    .l-rat{background:#3498db;box-shadow:0 0 15px rgba(52,152,219,0.6)}
+    .loading-text{margin-top:25px;font-size:1.3em;color:white;font-weight:600;letter-spacing:0.5px}
+    .loading-sub{margin-top:8px;font-size:0.95em;color:rgba(255,255,255,0.7)}
     .loading-dots::after{content:'';animation:dots 1.5s infinite}
     @keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
-    .rat-anim{animation:rat-wiggle 0.5s ease-in-out infinite alternate}
-    @keyframes rat-wiggle{0%{transform:translateX(-3px) rotate(-5deg)}100%{transform:translateX(3px) rotate(5deg)}}
-    .fade-out{opacity:0;pointer-events:none}
   </style>
 </head>
 <body>
   <div id="loading-screen">
     <div id="loading-maze" class="loading-maze"></div>
-    <div class="loading-text">🧀 Rato aprendendo a encontrar o queijo<span class="loading-dots"></span></div>
-    <div class="loading-sub" id="loading-status">Inicializando ambiente...</div>
+    <div class="loading-text">🧀 Rato explorando o labirinto<span class="loading-dots"></span></div>
+    <div class="loading-sub" id="loading-status">Inicializando Python...</div>
   </div>
 
   <h1>🧀 Q-Learning Maze · Rato e Queijo</h1>
@@ -209,20 +203,20 @@ layout: null
     const logEl = document.getElementById('log');
     const modeHint = document.getElementById('mode-hint');
     const loadingScreen = document.getElementById('loading-screen');
+    const loadingStatus = document.getElementById('loading-status');
 
     async function init() {
       setupSliders();
       attachEventHandlers();
-      await runLoadingAnimation();
+      runLoadingAnimation();
       await loadPyodideWithSteps();
       setupMaze();
       updateUI();
-      setTimeout(() => {
-        loadingScreen.classList.add('fade-out');
-        setTimeout(() => {
-          loadingScreen.classList.add('hidden');
-        }, 800);
-      }, 1500);
+      statusEl.textContent = "✓ Pronto!";
+      statusEl.className = "status-ready";
+      document.getElementById('btn-step').disabled = false;
+      document.getElementById('btn-train').disabled = false;
+      setTimeout(hideLoadingScreen, 1500);
     }
 
     function setupSliders() {
@@ -250,85 +244,75 @@ layout: null
       document.getElementById('maze-size').addEventListener('change', (e) => { mazeSize = parseInt(e.target.value); });
     }
 
-    async function runLoadingAnimation() {
+    function runLoadingAnimation() {
       const maze = document.getElementById('loading-maze');
       maze.style.gridTemplateColumns = 'repeat(5, 50px)';
       maze.innerHTML = '';
-      const loadWalls = new Set(['1,2','2,2','3,2','2,0','2,1']);
-      const cheesePosLoad = {r:4,c:4};
       const cells = [];
-      
+      const loadWalls = new Set(['1,2','2,2','3,2','2,0','2,1']);
+      let ratPos = {r: 0, c: 0};
+      const cheesePosLoad = {r: 4, c: 4};
+
       for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
           const cell = document.createElement('div');
-          cell.className = 'l-cell l-empty';
+          cell.className = 'l-cell';
+          const key = `${r},${c}`;
+          if (loadWalls.has(key)) cell.classList.add('l-wall');
+          else if (r === cheesePosLoad.r && c === cheesePosLoad.c) {
+            cell.classList.add('l-cheese');
+            cell.textContent = '🧀';
+          } else {
+            cell.classList.add('l-empty');
+          }
           cell.dataset.r = r;
           cell.dataset.c = c;
-          if (loadWalls.has(`${r},${c}`)) cell.classList.replace('l-empty', 'l-wall');
-          if (r === cheesePosLoad.r && c === cheesePosLoad.c) {
-            cell.classList.replace('l-empty', 'l-cheese');
-            cell.textContent = '🧀';
-          }
           maze.appendChild(cell);
           cells.push(cell);
         }
       }
-      
-      const path = [{r:0,c:0},{r:0,c:1},{r:0,c:2},{r:0,c:3},{r:0,c:4},{r:1,c:4},{r:2,c:4},{r:3,c:4},{r:4,c:4}];
-      let pathIndex = 0;
-      let ratCell = null;
-      
-      function addRat(r, c) {
-        if (ratCell) {
-          ratCell.classList.remove('l-rat', 'rat-anim');
-          ratCell.textContent = '';
-        }
-        const idx = r * 5 + c;
+
+      function drawRat() {
+        cells.forEach(c => {
+          if (c.classList.contains('l-rat')) {
+            c.classList.remove('l-rat');
+            c.textContent = c.classList.contains('l-cheese') ? '🧀' : '';
+          }
+        });
+        const idx = ratPos.r * 5 + ratPos.c;
         cells[idx].classList.add('l-rat');
         cells[idx].textContent = '🐭';
-        cells[idx].classList.add('rat-anim');
-        ratCell = cells[idx];
-        
-        if (pathIndex > 0 && r !== 4 || c !== 4) {
-          const prevIdx = (pathIndex - 1) * 5 + 0;
-          if (!loadWalls.has(`${path[pathIndex-1].r},${path[pathIndex-1].c}`)) {
-            cells[pathIndex - 1 + (pathIndex-1)*5 - pathIndex*5 + r*5].classList.add('l-path');
-          }
-        }
       }
-      
-      addRat(0, 0);
-      
+
+      drawRat();
+
       loadingInterval = setInterval(() => {
-        pathIndex++;
-        if (pathIndex < path.length) {
-          const next = path[pathIndex];
-          addRat(next.r, next.c);
-        } else {
-          pathIndex = 0;
-          cells.forEach(c => c.classList.remove('l-path'));
-          setTimeout(() => addRat(0, 0), 300);
+        const moves = [{r:-1,c:0},{r:1,c:0},{r:0,c:-1},{r:0,c:1}];
+        const validMoves = moves.filter(m => {
+          const nr = ratPos.r + m.r;
+          const nc = ratPos.c + m.c;
+          return nr >= 0 && nr < 5 && nc >= 0 && nc < 5 && !loadWalls.has(`${nr},${nc}`);
+        });
+        if (validMoves.length > 0) {
+          const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+          ratPos.r += move.r;
+          ratPos.c += move.c;
+          drawRat();
         }
-      }, 400);
+      }, 350);
     }
 
     async function loadPyodideWithSteps() {
       try {
-        const statusEl = document.getElementById('loading-status');
-        statusEl.textContent = 'Carregando Pyodide...';
-        
+        loadingStatus.textContent = 'Carregando Pyodide...';
         pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/" });
-        statusEl.textContent = 'Carregando NumPy...';
-        
+        loadingStatus.textContent = 'Carregando NumPy...';
         await pyodide.loadPackage("numpy");
-        statusEl.textContent = 'Lendo código Q-Learning...';
-        
+        loadingStatus.textContent = 'Lendo código Q-Learning...';
         await loadPythonCode();
-        
-        document.getElementById('btn-step').disabled = false;
-        document.getElementById('btn-train').disabled = false;
+        loadingStatus.textContent = 'Preparando ambiente...';
       } catch (err) {
-        document.getElementById('loading-status').textContent = 'Erro: ' + err.message;
+        loadingStatus.textContent = 'Erro: ' + err.message;
         console.error(err);
       }
     }
@@ -372,301 +356,4 @@ def choose_action(q, pos, epsilon, size, walls):
 def step(pos, action):
     r,c = pos
     dr,dc = ACTIONS[ACTION_NAMES.index(action)]
-    return (r+dr, c+dc)
-
-def run_episode(q, pos, cheese, size, walls, alpha, gamma, epsilon, step_reward, cheese_reward, animate=False):
-    total_reward = 0
-    steps = 0
-    history = []
-    while pos != cheese and steps < size*size*4:
-        action = choose_action(q, pos, epsilon, size, walls)
-        if action is None: break
-        new_pos = step(pos, action)
-        reward = cheese_reward if new_pos == cheese else step_reward
-        done = new_pos == cheese
-        old_q = q[f"{pos[0]},{pos[1]}"][action]
-        max_next = max(q[f"{new_pos[0]},{new_pos[1]}"].values()) if not done else 0
-        q[f"{pos[0]},{pos[1]}"][action] = old_q + alpha*(reward + gamma*max_next - old_q)
-        total_reward += reward
-        steps += 1
-        if animate:
-            history.append({'pos':pos,'action':action,'new_pos':new_pos,'reward':reward,'q':{k:round(v,3) for k,v in q[f"{pos[0]},{pos[1]}"].items()}})
-        pos = new_pos
-        if done: break
-    return {'total_reward':round(total_reward,2),'steps':steps,'final_pos':pos,'history':history if animate else []}
-
-q_table = init_q_table(5, set())
-`;
-      await pyodide.runPythonAsync(code);
-    }
-
-    function setupMaze() {
-      loadDefaultMaze();
-      renderMaze();
-    }
-
-    function renderMaze() {
-      mazeContainer.innerHTML = '';
-      mazeContainer.style.gridTemplateColumns = `repeat(${mazeSize}, 40px)`;
-      for (let r = 0; r < mazeSize; r++) {
-        for (let c = 0; c < mazeSize; c++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell empty';
-          cell.dataset.r = r;
-          cell.dataset.c = c;
-          if (walls.has(`${r},${c}`)) cell.classList.add('wall');
-          if (r === cheesePos.r && c === cheesePos.c) cell.classList.add('cheese');
-          if (r === currentPos.r && c === currentPos.c) cell.classList.add('rat');
-          cell.addEventListener('click', () => handleCellClick(r, c));
-          mazeContainer.appendChild(cell);
-        }
-      }
-    }
-
-    function handleCellClick(r, c) {
-      if (isEditingCheese) {
-        if (!walls.has(`${r},${c}`)) {
-          cheesePos = {r, c};
-          renderMaze();
-          log(`🧀 Queijo movido para (${r},${c})`);
-        }
-        return;
-      }
-      if (isEditing) {
-        const key = `${r},${c}`;
-        if (walls.has(key)) {
-          walls.delete(key);
-          log(`🧱 Parede removida em (${r},${c})`);
-        } else if (!(r === currentPos.r && c === currentPos.c) && !(r === cheesePos.r && c === cheesePos.c)) {
-          walls.add(key);
-          log(`🧱 Parede adicionada em (${r},${c})`);
-        }
-        renderMaze();
-        return;
-      }
-      const dr = Math.abs(r - currentPos.r);
-      const dc = Math.abs(c - currentPos.c);
-      if (dr + dc === 1 && !walls.has(`${r},${c}`)) {
-        const action = r < currentPos.r ? 'up' : r > currentPos.r ? 'down' : c < currentPos.c ? 'left' : 'right';
-        moveRat(action, {r, c});
-      }
-    }
-
-    function moveRat(action, newPos) {
-      const key = `${currentPos.r},${currentPos.c}`;
-      if (!qTable[key]) qTable[key] = {up:0,down:0,left:0,right:0};
-      updateQDisplay(qTable[key]);
-      currentPos = newPos;
-      renderMaze();
-      if (currentPos.r === cheesePos.r && currentPos.c === cheesePos.c) {
-        log(`🎉 Queijo encontrado!`);
-        lastReward = 10;
-        lastSteps = 1;
-        updateMetrics();
-      }
-    }
-
-    function updateQDisplay(qVals) {
-      const actions = ['up','down','left','right'];
-      const values = actions.map(a => qVals[a] || 0);
-      const max = Math.max(...values.map(v => Math.abs(v)), 0.01);
-      actions.forEach((a, i) => {
-        const v = values[i];
-        const pct = Math.min(100, Math.abs(v) / max * 80);
-        document.getElementById(`q-${a}-fill`).style.height = `${pct}%`;
-        document.getElementById(`q-${a}-fill`).style.background = v >= 0 ? '#27ae60' : '#e74c3c';
-        document.getElementById(`q-${a}`).textContent = v.toFixed(2);
-      });
-    }
-
-    function updateMetrics() {
-      document.getElementById('metric-episodes').textContent = episodeCount;
-      document.getElementById('metric-reward').textContent = lastReward !== null ? lastReward.toFixed(2) : '—';
-      document.getElementById('metric-steps').textContent = lastSteps !== null ? lastSteps : '—';
-    }
-
-    function log(msg) {
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      logEl.prepend(entry);
-      if (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
-    }
-
-    function updateUI() {
-      modeHint.textContent = isEditingCheese ? '💡 Modo: Editar queijo (clique para mover)' : 
-                            isEditing ? '💡 Modo: Editar paredes (clique para alternar)' : 
-                            '💡 Modo: Mover rato (clique adjacente)';
-      renderMaze();
-    }
-
-    async function runEpisode(animate) {
-      if (isTraining || !pyodide) return;
-      const alpha = parseFloat(document.getElementById('alpha').value);
-      const gamma = parseFloat(document.getElementById('gamma').value);
-      const epsilon = parseFloat(document.getElementById('epsilon').value);
-      const stepReward = parseFloat(document.getElementById('step-reward').value);
-      const cheeseReward = parseFloat(document.getElementById('cheese-reward').value);
-      const speed = parseInt(document.getElementById('speed').value);
-      
-      isTraining = true;
-      document.getElementById('btn-step').disabled = true;
-      document.getElementById('btn-train').disabled = true;
-      
-      try {
-        const wallsList = Array.from(walls).map(w => `'${w}'`).join(',');
-        const result = await pyodide.runPythonAsync(`
-import json
-result = run_episode(q_table, (${currentPos.r},${currentPos.c}), (${cheesePos.r},${cheesePos.c}), ${mazeSize}, {${wallsList}}, ${alpha}, ${gamma}, ${epsilon}, ${stepReward}, ${cheeseReward}, ${animate})
-json.dumps(result)
-        `);
-        const res = JSON.parse(result);
-        episodeCount++;
-        lastReward = res.total_reward;
-        lastSteps = res.steps;
-        updateMetrics();
-        
-        if (animate && res.history) {
-          for (const frame of res.history) {
-            currentPos = frame.new_pos;
-            updateQDisplay(frame.q);
-            renderMaze();
-            await new Promise(r => setTimeout(r, speed));
-          }
-        }
-        if (res.final_pos[0] === cheesePos.r && res.final_pos[1] === cheesePos.c) {
-          log(`✅ Episódio #${episodeCount}: queijo em ${res.steps} passos, recompensa ${res.total_reward}`);
-        } else {
-          log(`⚠️ Episódio #${episodeCount}: não encontrou, ${res.steps} passos, recompensa ${res.total_reward}`);
-        }
-      } catch (err) {
-        log(`❌ Erro: ${err.message}`);
-        console.error(err);
-      } finally {
-        isTraining = false;
-        document.getElementById('btn-step').disabled = false;
-        document.getElementById('btn-train').disabled = false;
-      }
-    }
-
-    async function runTraining() {
-      if (isTraining || !pyodide) return;
-      const alpha = parseFloat(document.getElementById('alpha').value);
-      const gamma = parseFloat(document.getElementById('gamma').value);
-      const epsilon = parseFloat(document.getElementById('epsilon').value);
-      const stepReward = parseFloat(document.getElementById('step-reward').value);
-      const cheeseReward = parseFloat(document.getElementById('cheese-reward').value);
-      
-      isTraining = true;
-      document.getElementById('btn-step').disabled = true;
-      document.getElementById('btn-train').disabled = true;
-      log(`🚀 Iniciando treinamento de 100 episódios...`);
-      
-      try {
-        const wallsList = Array.from(walls).map(w => `'${w}'`).join(',');
-        for (let i = 0; i < 100; i++) {
-          const result = await pyodide.runPythonAsync(`
-import json
-result = run_episode(q_table, (${currentPos.r},${currentPos.c}), (${cheesePos.r},${cheesePos.c}), ${mazeSize}, {${wallsList}}, ${alpha}, ${gamma}, ${epsilon}, ${stepReward}, ${cheeseReward}, False)
-json.dumps(result)
-          `);
-          const res = JSON.parse(result);
-          episodeCount++;
-          if (i % 10 === 9) {
-            lastReward = res.total_reward;
-            lastSteps = res.steps;
-            updateMetrics();
-            log(`📊 Progresso: ${i+1}/100 episódios`);
-          }
-        }
-        log(`✅ Treinamento concluído!`);
-      } catch (err) {
-        log(`❌ Erro no treinamento: ${err.message}`);
-      } finally {
-        isTraining = false;
-        document.getElementById('btn-step').disabled = false;
-        document.getElementById('btn-train').disabled = false;
-      }
-    }
-
-    function resetQ() {
-      if (!pyodide) return;
-      const wallsList = Array.from(walls).map(w => `'${w}'`).join(',');
-      pyodide.runPython(`q_table = init_q_table(${mazeSize}, {${wallsList}})`);
-      log(`↺ Tabela Q resetada`);
-    }
-
-    function resetAll() {
-      episodeCount = 0;
-      lastReward = null;
-      lastSteps = null;
-      currentPos = {r:0, c:0};
-      walls.clear();
-      cheesePos = {r:mazeSize-1, c:mazeSize-1};
-      resetQ();
-      updateMetrics();
-      renderMaze();
-      log(`🔄 Tudo reiniciado`);
-    }
-
-    function resizeMaze() {
-      mazeSize = parseInt(document.getElementById('maze-size').value);
-      walls.clear();
-      currentPos = {r:0, c:0};
-      cheesePos = {r:mazeSize-1, c:mazeSize-1};
-      resetQ();
-      renderMaze();
-      log(`📐 Labirinto redimensionado para ${mazeSize}x${mazeSize}`);
-    }
-
-    function toggleEdit() {
-      isEditing = !isEditing;
-      isEditingCheese = false;
-      updateUI();
-      log(isEditing ? `✏️ Modo edição: clique para adicionar/remover paredes` : `✅ Modo edição desativado`);
-    }
-
-    function toggleEditCheese() {
-      isEditingCheese = !isEditingCheese;
-      isEditing = false;
-      updateUI();
-      log(isEditingCheese ? `🧀 Modo editar queijo: clique para mover` : `✅ Modo editar queijo desativado`);
-    }
-
-    function clearWalls() {
-      walls.clear();
-      renderMaze();
-      log(`🧹 Paredes removidas`);
-    }
-
-    function generateRandomMaze() {
-      walls.clear();
-      const total = mazeSize * mazeSize;
-      const wallCount = Math.floor(total * 0.2);
-      for (let i = 0; i < wallCount; i++) {
-        let r, c;
-        do {
-          r = Math.floor(Math.random() * mazeSize);
-          c = Math.floor(Math.random() * mazeSize);
-        } while ((r === 0 && c === 0) || (r === mazeSize-1 && c === mazeSize-1) || walls.has(`${r},${c}`));
-        walls.add(`${r},${c}`);
-      }
-      renderMaze();
-      log(`🎲 Labirinto aleatório gerado (${wallCount} paredes)`);
-    }
-
-    function loadDefaultMaze() {
-      walls.clear();
-      if (mazeSize >= 5) {
-        walls.add('1,2'); walls.add('2,2'); walls.add('3,2');
-        walls.add('2,0'); walls.add('2,1');
-      }
-      currentPos = {r:0, c:0};
-      cheesePos = {r:mazeSize-1, c:mazeSize-1};
-      renderMaze();
-    }
-
-    window.addEventListener('DOMContentLoaded', init);
-  </script>
-</body>
-</html>
+    return (r+dr, c
