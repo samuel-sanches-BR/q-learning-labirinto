@@ -3,257 +3,384 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q-Learning no Labirinto – Aprendizado por Reforço Interativo</title>
+    <title>Q‑Learning Maze · Aprendizado por Reforço Interativo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <style>
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, 'Segoe UI', 'Inter', sans-serif;
         }
         body {
-            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
-            margin: 0;
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: #eef2f5;
+            font-family: 'Inter', sans-serif;
+            padding: 2rem 1.5rem;
+            color: #1a2a3a;
         }
-        .container {
+        .app-container {
             max-width: 1400px;
-            width: 100%;
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(2px);
+            margin: 0 auto;
+            background: white;
             border-radius: 2rem;
-            box-shadow: 0 25px 40px -12px rgba(0,0,0,0.3);
-            padding: 1.5rem;
-            transition: all 0.2s;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 0 0 0.2rem 0;
-            color: #1a2c3e;
+        /* Header com loading */
+        .header {
+            background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
+            padding: 1.2rem 2rem;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .title-section h1 {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+        .title-section p {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 0.2rem;
+        }
+        .loading-status {
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(4px);
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
-        .sub {
-            color: #2c5282;
-            border-left: 4px solid #3182ce;
-            padding-left: 1rem;
-            margin-bottom: 1.5rem;
-            font-weight: 500;
-        }
-        .dashboard {
+        /* Layout principal */
+        .main-grid {
             display: flex;
             flex-wrap: wrap;
             gap: 1.5rem;
+            padding: 1.8rem 2rem;
         }
-        .controls-panel {
+        .sidebar {
             flex: 1.2;
             min-width: 260px;
-            background: white;
-            border-radius: 1.5rem;
-            padding: 1.2rem;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
         }
-        .visual-panel {
+        .content {
             flex: 2.5;
             min-width: 320px;
-            background: white;
-            border-radius: 1.5rem;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 1.2rem;
             padding: 1.2rem;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            border: 1px solid #e9edf2;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1e2f41;
         }
         .param-group {
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
         }
         label {
             display: flex;
             justify-content: space-between;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #1e2f41;
+            font-size: 0.8rem;
+            font-weight: 500;
             margin-bottom: 0.3rem;
+            color: #2c3e50;
         }
         input[type="range"] {
             width: 100%;
-            accent-color: #3182ce;
+            accent-color: #3b82f6;
+        }
+        .value-badge {
+            background: #eef2f9;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.7rem;
         }
         button {
             background: #1f3a5f;
             border: none;
             color: white;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
+            font-weight: 500;
+            padding: 0.6rem 1rem;
             border-radius: 2rem;
             cursor: pointer;
             transition: 0.2s;
             font-size: 0.85rem;
-            margin: 0.2rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         button:hover {
-            background: #2c5282;
-            transform: translateY(-2px);
+            background: #2c4c7a;
+            transform: translateY(-1px);
         }
-        .btn-primary { background: #2b6cb0; }
-        .btn-warning { background: #c05621; }
+        .btn-primary { background: #2c7cb6; }
+        .btn-warning { background: #b45330; }
         .btn-success { background: #2f855a; }
-        .maze-canvas {
+        .btn-secondary { background: #4a627a; }
+        .action-buttons {
             display: flex;
+            gap: 12px;
             justify-content: center;
-            margin-bottom: 1rem;
-        }
-        canvas {
-            background-color: #fefefe;
-            border-radius: 1rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border: 2px solid #cbd5e0;
-            width: 100%;
-            max-width: 400px;
-            height: auto;
-            cursor: pointer;
-        }
-        .q-values {
-            background: #f7fafc;
-            border-radius: 1rem;
-            padding: 0.8rem;
             margin-top: 1rem;
-            text-align: center;
         }
-        .q-bars {
+        .action-btn {
+            width: 55px;
+            height: 55px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: #edf2f7;
+            color: #1a2a3a;
+            border-radius: 60px;
+            justify-content: center;
+        }
+        .maze-editor {
             display: flex;
-            justify-content: space-around;
-            align-items: flex-end;
-            height: 120px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .maze-canvas {
+            background: #fefefe;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            cursor: crosshair;
+        }
+        .editor-actions {
+            display: flex;
             gap: 8px;
-            margin-top: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        .q-bar {
-            flex: 1;
-            background-color: #3182ce;
-            border-radius: 8px 8px 0 0;
-            transition: height 0.2s;
-            min-width: 40px;
-            text-align: center;
-            color: white;
-            font-weight: bold;
-            font-size: 0.7rem;
-            padding-top: 4px;
-        }
-        .explanation {
-            background: #eef2ff;
+        .q-bars-container {
+            background: #f8fafc;
             border-radius: 1rem;
             padding: 0.8rem;
-            margin-top: 1rem;
-            font-size: 0.8rem;
-            max-height: 250px;
-            overflow-y: auto;
         }
-        .status {
-            font-size: 0.75rem;
-            color: #2d3748;
-            margin-top: 0.5rem;
+        .q-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .q-bar-label {
+            width: 35px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .q-bar-bg {
+            flex: 1;
+            height: 28px;
+            background: #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .q-bar-fill {
+            height: 100%;
+            background: #3b82f6;
+            width: 0%;
+            transition: width 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .explanation-box {
+            background: #f1f5f9;
+            border-radius: 1rem;
+            padding: 1rem;
+            font-size: 0.8rem;
+            border-left: 4px solid #3b82f6;
+            margin-top: 1rem;
+        }
+        .metrics {
+            display: flex;
+            gap: 1rem;
+            justify-content: space-around;
             text-align: center;
         }
-        hr { margin: 0.8rem 0; }
-        .flex-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+        .metric-card {
+            background: #f1f5f9;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            flex: 1;
+        }
+        .footer {
+            border-top: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafcff;
+            font-size: 0.75rem;
+        }
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #1f3a5f;
+            text-decoration: none;
+            font-weight: 500;
+        }
         @media (max-width: 780px) {
-            .dashboard { flex-direction: column; }
+            body { padding: 1rem; }
+            .main-grid { padding: 1rem; }
+            .action-btn { width: 45px; height: 45px; font-size: 1.4rem; }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
 </head>
 <body>
-<div class="container">
-    <h1>🤖 Q-Learning no Labirinto</h1>
-    <div class="sub">🧠 Aprendizado por Reforço – entenda como o agente aprende por tentativa e erro</div>
-
-    <div class="dashboard">
-        <!-- Painel de controle -->
-        <div class="controls-panel">
-            <h3>⚙️ Hiperparâmetros</h3>
-            <div class="param-group">
-                <label>α (taxa de aprendizado) <span id="alphaVal">0.10</span></label>
-                <input type="range" id="alphaSlider" min="0.01" max="0.9" step="0.01" value="0.1">
-            </div>
-            <div class="param-group">
-                <label>γ (desconto futuro) <span id="gammaVal">0.95</span></label>
-                <input type="range" id="gammaSlider" min="0.5" max="0.99" step="0.01" value="0.95">
-            </div>
-            <div class="param-group">
-                <label>ε (exploração) <span id="epsilonVal">0.20</span></label>
-                <input type="range" id="epsilonSlider" min="0.01" max="0.9" step="0.01" value="0.2">
-                <div style="font-size:0.7rem; color:#4a5568;">Quanto maior ε, mais o agente age aleatoriamente (explora).</div>
-            </div>
-            <div class="param-group">
-                <label>Penalidade por passo (r) <span id="stepPenaltyVal">-0.05</span></label>
-                <input type="range" id="stepPenaltySlider" min="-0.5" max="-0.01" step="0.01" value="-0.05">
-            </div>
-            <div class="param-group">
-                <label>Recompensa do tesouro <span id="goalRewardVal">10.0</span></label>
-                <input type="range" id="goalRewardSlider" min="1" max="20" step="0.5" value="10">
-            </div>
-            <hr>
-            <div class="flex-buttons">
-                <button id="trainOneBtn" class="btn-primary">🎓 Treinar 1 episódio</button>
-                <button id="trainBatchBtn">⚡ Treinar 100 episódios</button>
-                <button id="resetBtn" class="btn-warning">🗑️ Resetar Q-table</button>
-            </div>
-            <button id="manualModeBtn" class="btn-success">🕹️ Ativar Modo Manual</button>
-            <div id="status" class="status">✅ Pronto. Carregando ambiente...</div>
+<div class="app-container">
+    <div class="header">
+        <div class="title-section">
+            <h1><i class="fas fa-robot"></i> Q‑Learning Maze</h1>
+            <p>Aprendizado por Reforço interativo · entenda Q‑Learning na prática</p>
         </div>
+        <div id="loadingIndicator" class="loading-status">
+            <i class="fas fa-spinner fa-pulse"></i> <span>Carregando ambiente...</span>
+        </div>
+    </div>
 
-        <!-- Painel visual -->
-        <div class="visual-panel">
-            <div class="maze-canvas">
-                <canvas id="mazeCanvas" width="400" height="400"></canvas>
-            </div>
-            <div class="q-values">
-                <strong>📊 Q‑values no estado atual</strong>
-                <div id="qBars" class="q-bars">
-                    <div class="q-bar" style="height:0px">↑</div>
-                    <div class="q-bar" style="height:0px">↓</div>
-                    <div class="q-bar" style="height:0px">←</div>
-                    <div class="q-bar" style="height:0px">→</div>
+    <div class="main-grid">
+        <div class="sidebar">
+            <div class="card">
+                <h3><i class="fas fa-sliders-h"></i> Hiperparâmetros</h3>
+                <div class="param-group">
+                    <label>α (taxa aprendizado) <span id="alphaVal" class="value-badge">0.10</span></label>
+                    <input type="range" id="alphaSlider" min="0.01" max="0.9" step="0.01" value="0.1">
+                </div>
+                <div class="param-group">
+                    <label>γ (desconto futuro) <span id="gammaVal" class="value-badge">0.95</span></label>
+                    <input type="range" id="gammaSlider" min="0.5" max="0.99" step="0.01" value="0.95">
+                </div>
+                <div class="param-group">
+                    <label>ε (exploração) <span id="epsilonVal" class="value-badge">0.20</span></label>
+                    <input type="range" id="epsilonSlider" min="0.01" max="0.9" step="0.01" value="0.2">
+                    <div style="font-size:0.7rem; color:#5a6e8c;">maior ε = mais ações aleatórias (exploração)</div>
+                </div>
+                <div class="param-group">
+                    <label>Penalidade por passo <span id="stepPenaltyVal" class="value-badge">-0.05</span></label>
+                    <input type="range" id="stepPenaltySlider" min="-0.5" max="-0.01" step="0.01" value="-0.05">
+                </div>
+                <div class="param-group">
+                    <label>Recompensa do tesouro <span id="goalRewardVal" class="value-badge">10.0</span></label>
+                    <input type="range" id="goalRewardSlider" min="1" max="20" step="0.5" value="10">
                 </div>
             </div>
-            <div id="explanationArea" class="explanation">
-                <i>Clique em "Modo Manual" e depois nas setas para ver a explicação.</i>
+
+            <div class="card">
+                <h3><i class="fas fa-cog"></i> Treinamento</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="trainOneBtn" class="btn-primary"><i class="fas fa-play"></i> 1 episódio</button>
+                    <button id="trainBatchBtn"><i class="fas fa-charging-station"></i> 100 episódios</button>
+                    <button id="resetBtn" class="btn-warning"><i class="fas fa-undo-alt"></i> Resetar Q</button>
+                </div>
+                <button id="manualModeBtn" class="btn-success" style="margin-top: 12px; width: 100%;"><i class="fas fa-gamepad"></i> Modo Manual (aprenda passo a passo)</button>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-chart-line"></i> Métricas</h3>
+                <div class="metrics">
+                    <div class="metric-card"><span id="epCount">0</span><br>episódios</div>
+                    <div class="metric-card"><span id="lastReward">—</span><br>última recompensa</div>
+                </div>
             </div>
         </div>
+
+        <div class="content">
+            <div class="card">
+                <h3><i class="fas fa-draw-polygon"></i> Editor do Labirinto</h3>
+                <div class="maze-editor">
+                    <canvas id="mazeCanvas" width="400" height="400" class="maze-canvas" style="width:100%; max-width:400px; height:auto"></canvas>
+                    <div class="editor-actions">
+                        <button id="clearWallsBtn" class="btn-secondary"><i class="fas fa-eraser"></i> Limpar paredes</button>
+                        <button id="randomMazeBtn" class="btn-secondary"><i class="fas fa-random"></i> Aleatório</button>
+                        <button id="resetMazeBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Padrão</button>
+                        <label style="display:inline-flex; align-items:center; gap:6px;"><input type="checkbox" id="editGoalCheckbox"> Editar tesouro</label>
+                    </div>
+                    <div style="font-size:0.7rem; margin-top: 8px; color:#5a6e8c;">
+                        Clique nas células: █ parede | ⭐ tesouro (apenas um)
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-chart-simple"></i> Valores Q (estado atual)</h3>
+                <div id="qBarsContainer" class="q-bars-container">
+                    <div class="q-bar-item"><span class="q-bar-label">↑</span><div class="q-bar-bg"><div class="q-bar-fill" id="qFill0">0.00</div></div></div>
+                    <div class="q-bar-item"><span class="q-bar-label">↓</span><div class="q-bar-bg"><div class="q-bar-fill" id="qFill1">0.00</div></div></div>
+                    <div class="q-bar-item"><span class="q-bar-label">←</span><div class="q-bar-bg"><div class="q-bar-fill" id="qFill2">0.00</div></div></div>
+                    <div class="q-bar-item"><span class="q-bar-label">→</span><div class="q-bar-bg"><div class="q-bar-fill" id="qFill3">0.00</div></div></div>
+                </div>
+            </div>
+
+            <div id="explanationBox" class="explanation-box">
+                <i class="fas fa-lightbulb"></i> Clique em "Modo Manual" e depois nas setas para ver a atualização do Q‑value.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>🧠 Q‑Learning: o agente aprende por tentativa e erro, atualizando a tabela Q.</span>
+        <a href="https://github.com/samuel-sanches-BR/Q-Learning-Maze-Pyodide" target="_blank" class="github-link">
+            <i class="fab fa-github"></i> GitHub / Código-fonte
+        </a>
     </div>
 </div>
 
 <script>
-    // Variáveis globais
     let pyodide = null;
     let isReady = false;
-    let manualModeActive = false;
-    let currentAgentState = [0,0];   // posição [row,col]
-    let mazeData = null;              // matriz do labirinto (para desenho)
-    let goalPos = [4,4];              // posição do tesouro
+    let manualMode = false;
+    let currentAgentState = [0, 0];
+    let mazeData = null;
+    let goalPos = [4, 4];
+    let editGoal = false;
+    let episodeCount = 0;
+    let lastReward = 0;
 
-    // Elementos DOM
     const canvas = document.getElementById('mazeCanvas');
     const ctx = canvas.getContext('2d');
+    const loadingSpan = document.querySelector('#loadingIndicator span');
+    const explanationDiv = document.getElementById('explanationBox');
     const alphaSlider = document.getElementById('alphaSlider');
     const gammaSlider = document.getElementById('gammaSlider');
     const epsilonSlider = document.getElementById('epsilonSlider');
     const stepPenaltySlider = document.getElementById('stepPenaltySlider');
     const goalRewardSlider = document.getElementById('goalRewardSlider');
-    const statusDiv = document.getElementById('status');
-    const qBarsDiv = document.getElementById('qBars');
-    const explanationDiv = document.getElementById('explanationArea');
 
-    // Atualiza labels
-    alphaSlider.addEventListener('input', () => document.getElementById('alphaVal').innerText = parseFloat(alphaSlider.value).toFixed(2));
-    gammaSlider.addEventListener('input', () => document.getElementById('gammaVal').innerText = parseFloat(gammaSlider.value).toFixed(2));
-    epsilonSlider.addEventListener('input', () => document.getElementById('epsilonVal').innerText = parseFloat(epsilonSlider.value).toFixed(2));
-    stepPenaltySlider.addEventListener('input', () => document.getElementById('stepPenaltyVal').innerText = parseFloat(stepPenaltySlider.value).toFixed(2));
-    goalRewardSlider.addEventListener('input', () => document.getElementById('goalRewardVal').innerText = parseFloat(goalRewardSlider.value).toFixed(1));
+    function updateParamLabels() {
+        document.getElementById('alphaVal').innerText = parseFloat(alphaSlider.value).toFixed(2);
+        document.getElementById('gammaVal').innerText = parseFloat(gammaSlider.value).toFixed(2);
+        document.getElementById('epsilonVal').innerText = parseFloat(epsilonSlider.value).toFixed(2);
+        document.getElementById('stepPenaltyVal').innerText = parseFloat(stepPenaltySlider.value).toFixed(2);
+        document.getElementById('goalRewardVal').innerText = parseFloat(goalRewardSlider.value).toFixed(1);
+    }
+    alphaSlider.addEventListener('input', updateParamLabels);
+    gammaSlider.addEventListener('input', updateParamLabels);
+    epsilonSlider.addEventListener('input', updateParamLabels);
+    stepPenaltySlider.addEventListener('input', updateParamLabels);
+    goalRewardSlider.addEventListener('input', updateParamLabels);
+    updateParamLabels();
 
-    // ========== Desenho do labirinto ==========
     function drawMaze(agentRow, agentCol) {
         if (!mazeData) return;
         const size = 400;
@@ -268,56 +395,58 @@
             for (let j = 0; j < cols; j++) {
                 const x = j * cellW;
                 const y = i * cellH;
-                if (mazeData[i][j] === 1) { // parede
+                if (mazeData[i][j] === 1) {
                     ctx.fillStyle = "#6c757d";
                     ctx.fillRect(x, y, cellW, cellH);
-                } else if (mazeData[i][j] === 2) { // objetivo
+                    ctx.fillStyle = "#343a40";
+                    ctx.fillRect(x+2, y+2, cellW-4, cellH-4);
+                } else if (mazeData[i][j] === 2) {
                     ctx.fillStyle = "#ffc107";
                     ctx.fillRect(x, y, cellW, cellH);
-                    ctx.fillStyle = "#000";
-                    ctx.font = `${cellW * 0.6}px "Segoe UI Emoji"`;
-                    ctx.fillText("🏆", x + cellW*0.3, y + cellH*0.8);
+                    ctx.fillStyle = "#b45330";
+                    ctx.font = `${cellW * 0.5}px "Segoe UI"`;
+                    ctx.fillText("★", x + cellW*0.4, y + cellH*0.7);
                 } else {
-                    ctx.fillStyle = "#f8f9fa";
+                    ctx.fillStyle = "#ffffff";
                     ctx.fillRect(x, y, cellW, cellH);
-                    ctx.strokeStyle = "#cbd5e0";
+                    ctx.strokeStyle = "#cbd5e1";
                     ctx.strokeRect(x, y, cellW, cellH);
                 }
             }
         }
-        // Desenha agente
         if (agentRow !== undefined && agentCol !== undefined && mazeData[agentRow][agentCol] !== 1) {
             const x = agentCol * cellW;
             const y = agentRow * cellH;
             ctx.fillStyle = "#3182ce";
             ctx.beginPath();
-            ctx.arc(x + cellW/2, y + cellH/2, cellW*0.3, 0, 2*Math.PI);
+            ctx.arc(x + cellW/2, y + cellH/2, cellW*0.25, 0, 2*Math.PI);
             ctx.fill();
             ctx.fillStyle = "white";
-            ctx.font = `${cellW * 0.5}px "Segoe UI Emoji"`;
-            ctx.fillText("🤖", x + cellW*0.35, y + cellH*0.7);
+            ctx.font = `${cellW * 0.35}px "Segoe UI"`;
+            ctx.fillText("●", x + cellW*0.43, y + cellH*0.65);
         }
     }
 
-    // Atualiza gráfico de barras dos Q-values
     function updateQBars(qValues) {
-        const maxQ = Math.max(...qValues, 0.01);
-        const bars = qBarsDiv.children;
+        const maxQ = Math.max(...qValues, 0.001);
         for (let i = 0; i < 4; i++) {
-            const height = (qValues[i] / maxQ) * 100;
-            bars[i].style.height = `${Math.max(5, height)}px`;
-            bars[i].innerHTML = `${['↑','↓','←','→'][i]}<br>${qValues[i].toFixed(2)}`;
+            const percent = (qValues[i] / maxQ) * 100;
+            const fillDiv = document.getElementById(`qFill${i}`);
+            fillDiv.style.width = `${percent}%`;
+            fillDiv.innerText = qValues[i].toFixed(2);
         }
     }
 
-    // ========== Comunicação com Pyodide ==========
+    function updateMetrics() {
+        document.getElementById('epCount').innerText = episodeCount;
+        document.getElementById('lastReward').innerText = lastReward.toFixed(2);
+    }
+
     async function loadPyodideAndInit() {
-        statusDiv.innerHTML = "🔄 Carregando Pyodide e ambiente Python (pode levar alguns segundos)...";
-        pyodide = await loadPyodide({
-            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/",
-        });
-        await pyodide.loadPackage(["numpy", "matplotlib"]); 
-      
+        loadingSpan.innerText = "Carregando Pyodide...";
+        pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/" });
+        loadingSpan.innerText = "Carregando pacotes...";
+        await pyodide.loadPackage(["numpy"]);
         await pyodide.runPythonAsync(`
 import numpy as np
 import json
@@ -340,17 +469,25 @@ class MazeEnv:
         self.step_penalty = step_penalty
         self.goal_reward = goal_reward
 
+    def set_maze(self, new_maze):
+        self.maze = np.array(new_maze)
+        self.goal = tuple(np.argwhere(self.maze == 2)[0])
+        self.n_rows, self.n_cols = self.maze.shape
+
     def is_wall(self, pos): return self.maze[pos] == 1
     def is_goal(self, pos): return pos == self.goal
+
     def get_next_state(self, state, action_idx):
         dr, dc = self.actions[action_idx]
         nr, nc = state[0]+dr, state[1]+dc
         if nr<0 or nr>=self.n_rows or nc<0 or nc>=self.n_cols or self.maze[nr,nc]==1:
             return state
         return (nr, nc)
+
     def get_reward(self, state):
         if self.is_goal(state): return self.goal_reward
         return self.step_penalty
+
     def set_rewards(self, step_penalty, goal_reward):
         self.step_penalty = step_penalty
         self.goal_reward = goal_reward
@@ -363,16 +500,19 @@ class QLearningAgent:
         self.epsilon = epsilon
         self.q_table = np.zeros((env.n_rows, env.n_cols, 4))
         self.rewards_history = []
+
     def choose_action(self, state):
         if np.random.random() < self.epsilon:
             return np.random.randint(4)
         return np.argmax(self.q_table[state])
+
     def update(self, state, action, next_state, reward):
         best_next = np.max(self.q_table[next_state])
         td_target = reward + self.gamma * best_next
         td_error = td_target - self.q_table[state][action]
         self.q_table[state][action] += self.alpha * td_error
         return td_target, td_error
+
     def train_episode(self, max_steps=200):
         state = self.env.start
         total_reward = 0
@@ -387,16 +527,18 @@ class QLearningAgent:
             steps += 1
         self.rewards_history.append(total_reward)
         return total_reward, steps
+
     def train_batch(self, episodes=100):
         for _ in range(episodes):
             self.train_episode()
+
     def reset(self):
         self.q_table.fill(0)
         self.rewards_history = []
+
     def get_q_values(self, state):
         return self.q_table[state].tolist()
 
-# Instâncias globais
 env = MazeEnv()
 agent = QLearningAgent(env)
 
@@ -406,8 +548,11 @@ def update_params(alpha, gamma, epsilon, step_penalty, goal_reward):
     agent.epsilon = epsilon
     env.set_rewards(step_penalty, goal_reward)
 
+def update_maze(maze_list):
+    env.set_maze(maze_list)
+    agent.q_table = np.zeros((env.n_rows, env.n_cols, 4))
+
 def manual_step(action_idx):
-    state = agent.env.start if not hasattr(manual_step, 'current') else manual_step.current
     if not hasattr(manual_step, 'current'):
         manual_step.current = env.start
     state = manual_step.current
@@ -417,17 +562,10 @@ def manual_step(action_idx):
     td_target, td_error = agent.update(state, action_idx, next_state, reward)
     new_q = agent.q_table[state][action_idx]
     manual_step.current = next_state
-    # Retorna informações para JS
     return {
-        'state': list(state),
-        'next_state': list(next_state),
-        'action': action_idx,
-        'reward': float(reward),
-        'old_q': float(old_q),
-        'td_target': float(td_target),
-        'td_error': float(td_error),
-        'new_q': float(new_q),
-        'is_goal': env.is_goal(next_state)
+        'state': list(state), 'next_state': list(next_state), 'action': action_idx,
+        'reward': float(reward), 'old_q': float(old_q), 'td_target': float(td_target),
+        'td_error': float(td_error), 'new_q': float(new_q), 'is_goal': env.is_goal(next_state)
     }
 
 def get_agent_state():
@@ -440,52 +578,61 @@ def reset_manual_state():
         manual_step.current = env.start
     return list(env.start)
 
-def get_maze_and_goal():
-    return {
-        'maze': env.maze.tolist(),
-        'goal': list(env.goal)
-    }
+def get_maze():
+    return env.maze.tolist()
+
+def set_agent_start(new_start):
+    env.start = tuple(new_start)
 
 def get_q_values_at(state):
-    return agent.q_table[tuple(state)].tolist()
+    return agent.get_q_values(tuple(state))
         `);
-        // Inicializar dados do labirinto
-        const mazeInfo = await pyodide.runPythonAsync(`json.dumps(get_maze_and_goal())`);
-        const parsed = JSON.parse(mazeInfo);
-        mazeData = parsed.maze;
-        goalPos = parsed.goal;
-        currentAgentState = await pyodide.runPythonAsync(`get_agent_state()`);
+        const mazeInfo = await pyodide.runPythonAsync(`json.dumps(get_maze())`);
+        mazeData = JSON.parse(mazeInfo);
+        const startState = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = startState;
         drawMaze(currentAgentState[0], currentAgentState[1]);
-        // Atualizar Q-values iniciais
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        statusDiv.innerHTML = "✅ Pronto. Ajuste os parâmetros e use os botões.";
         isReady = true;
+        loadingSpan.innerText = "Ambiente pronto!";
+        setTimeout(() => {
+            document.querySelector('.loading-status').style.opacity = "0.7";
+        }, 1000);
     }
 
-    // Funções chamadas pelos botões
-    async function trainOneEpisode() {
+    async function syncMazeToPython() {
         if (!isReady) return;
-        statusDiv.innerHTML = "🎓 Treinando 1 episódio...";
-        const alpha = parseFloat(alphaSlider.value);
-        const gamma = parseFloat(gammaSlider.value);
-        const epsilon = parseFloat(epsilonSlider.value);
-        const stepPen = parseFloat(stepPenaltySlider.value);
-        const goalRew = parseFloat(goalRewardSlider.value);
-        await pyodide.runPythonAsync(`
-update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})
-        `);
-        await pyodide.runPythonAsync(`agent.train_episode()`);
-        // Atualizar visualização com o estado inicial
+        await pyodide.runPythonAsync(`update_maze(${JSON.stringify(mazeData)})`);
         const newState = await pyodide.runPythonAsync(`get_agent_state()`);
         currentAgentState = newState;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        statusDiv.innerHTML = "✅ 1 episódio treinado. Q-table atualizada.";
-        if (manualModeActive) {
-            // Se modo manual ativo, reinicia posição para início
-            const resetState = await pyodide.runPythonAsync(`reset_manual_state()`);
+    }
+
+    async function trainOneEpisode() {
+        if (!isReady) return;
+        const alpha = parseFloat(alphaSlider.value);
+        const gamma = parseFloat(gammaSlider.value);
+        const epsilon = parseFloat(epsilonSlider.value);
+        const stepPen = parseFloat(stepPenaltySlider.value);
+        const goalRew = parseFloat(goalRewardSlider.value);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        const result = await pyodide.runPythonAsync(`agent.train_episode()`);
+        const reward = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
+        episodeCount++;
+        lastReward = reward;
+        updateMetrics();
+        const newState = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = newState;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
+        updateQBars(qvals);
+        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 1 episódio treinado. Recompensa: ${reward.toFixed(2)}`;
+        if (manualMode) {
+            await pyodide.runPythonAsync(`reset_manual_state()`);
+            const resetState = await pyodide.runPythonAsync(`get_agent_state()`);
             currentAgentState = resetState;
             drawMaze(currentAgentState[0], currentAgentState[1]);
         }
@@ -493,24 +640,26 @@ update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})
 
     async function trainBatch() {
         if (!isReady) return;
-        statusDiv.innerHTML = "⚡ Treinando 100 episódios (pode levar alguns segundos)...";
         const alpha = parseFloat(alphaSlider.value);
         const gamma = parseFloat(gammaSlider.value);
         const epsilon = parseFloat(epsilonSlider.value);
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
-        await pyodide.runPythonAsync(`
-update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})
-agent.train_batch(100)
-        `);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
+        await pyodide.runPythonAsync(`agent.train_batch(100)`);
+        episodeCount += 100;
+        const lastRew = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
+        lastReward = lastRew;
+        updateMetrics();
         const newState = await pyodide.runPythonAsync(`get_agent_state()`);
         currentAgentState = newState;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        statusDiv.innerHTML = "✅ 100 episódios treinados.";
-        if (manualModeActive) {
-            const resetState = await pyodide.runPythonAsync(`reset_manual_state()`);
+        explanationDiv.innerHTML = `<i class="fas fa-check-circle"></i> 100 episódios treinados. Última recompensa: ${lastRew.toFixed(2)}`;
+        if (manualMode) {
+            await pyodide.runPythonAsync(`reset_manual_state()`);
+            const resetState = await pyodide.runPythonAsync(`get_agent_state()`);
             currentAgentState = resetState;
             drawMaze(currentAgentState[0], currentAgentState[1]);
         }
@@ -519,104 +668,144 @@ agent.train_batch(100)
     async function resetAgent() {
         if (!isReady) return;
         await pyodide.runPythonAsync(`agent.reset()`);
+        episodeCount = 0;
+        lastReward = 0;
+        updateMetrics();
         const resetState = await pyodide.runPythonAsync(`reset_manual_state()`);
         currentAgentState = resetState;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
-        statusDiv.innerHTML = "🗑️ Tabela Q zerada.";
-        explanationDiv.innerHTML = "<i>Tabela resetada. Ative o modo manual para novos movimentos.</i>";
+        explanationDiv.innerHTML = "<i class='fas fa-trash-alt'></i> Tabela Q zerada.";
+    }
+
+    function handleCanvasClick(e) {
+        if (!isReady) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        const rows = mazeData.length;
+        const cols = mazeData[0].length;
+        const cellW = canvas.width / cols;
+        const cellH = canvas.height / rows;
+        const col = Math.floor(mouseX / cellW);
+        const row = Math.floor(mouseY / cellH);
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            if (editGoal) {
+                for (let i=0; i<rows; i++)
+                    for (let j=0; j<cols; j++)
+                        if (mazeData[i][j] === 2) mazeData[i][j] = 0;
+                mazeData[row][col] = 2;
+                goalPos = [row, col];
+            } else {
+                if (mazeData[row][col] === 0) mazeData[row][col] = 1;
+                else if (mazeData[row][col] === 1) mazeData[row][col] = 0;
+            }
+            drawMaze(currentAgentState[0], currentAgentState[1]);
+            syncMazeToPython();
+        }
+    }
+
+    canvas.addEventListener('click', handleCanvasClick);
+    document.getElementById('clearWallsBtn').onclick = () => {
+        for (let i=0; i<mazeData.length; i++)
+            for (let j=0; j<mazeData[0].length; j++)
+                if (mazeData[i][j] !== 2) mazeData[i][j] = 0;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        syncMazeToPython();
+    };
+    document.getElementById('randomMazeBtn').onclick = () => {
+        for (let i=0; i<mazeData.length; i++)
+            for (let j=0; j<mazeData[0].length; j++)
+                if (mazeData[i][j] !== 2 && Math.random() < 0.25) mazeData[i][j] = 1;
+                else if (mazeData[i][j] !== 2) mazeData[i][j] = 0;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        syncMazeToPython();
+    };
+    document.getElementById('resetMazeBtn').onclick = async () => {
+        mazeData = [
+            [0,0,0,1,0],
+            [0,1,0,1,0],
+            [0,1,0,0,0],
+            [0,0,1,0,0],
+            [0,0,0,0,2]
+        ];
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        await syncMazeToPython();
+    };
+    document.getElementById('editGoalCheckbox').onchange = (e) => { editGoal = e.target.checked; };
+
+    let manualActionContainer = null;
+    async function enableManualMode() {
+        if (!isReady) return;
+        manualMode = true;
+        await pyodide.runPythonAsync(`reset_manual_state()`);
+        const startState = await pyodide.runPythonAsync(`get_agent_state()`);
+        currentAgentState = startState;
+        drawMaze(currentAgentState[0], currentAgentState[1]);
+        const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
+        updateQBars(qvals);
+        explanationDiv.innerHTML = "<i class='fas fa-gamepad'></i> Modo manual ativo. Clique nas setas para mover o agente.";
+        if (!manualActionContainer) {
+            manualActionContainer = document.createElement('div');
+            manualActionContainer.className = 'action-buttons';
+            document.querySelector('.content').insertBefore(manualActionContainer, document.getElementById('explanationBox'));
+        }
+        manualActionContainer.innerHTML = '';
+        ['↑', '↓', '←', '→'].forEach((act, idx) => {
+            const btn = document.createElement('button');
+            btn.innerText = act;
+            btn.className = 'action-btn';
+            btn.onclick = () => manualAction(idx);
+            manualActionContainer.appendChild(btn);
+        });
     }
 
     async function manualAction(actionIdx) {
-        if (!isReady || !manualModeActive) {
-            explanationDiv.innerHTML = "<i>⚠️ Ative o modo manual primeiro (botão verde).</i>";
-            return;
-        }
-        // Atualiza parâmetros atuais no Python
+        if (!isReady || !manualMode) return;
         const alpha = parseFloat(alphaSlider.value);
         const gamma = parseFloat(gammaSlider.value);
         const epsilon = parseFloat(epsilonSlider.value);
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
-        await pyodide.runPythonAsync(`
-update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})
-        `);
+        await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
         const result = await pyodide.runPythonAsync(`
 import json
 data = manual_step(${actionIdx})
 json.dumps(data)
         `);
         const step = JSON.parse(result);
-        // Atualiza posição do agente
         currentAgentState = step.next_state;
         drawMaze(currentAgentState[0], currentAgentState[1]);
-        // Atualiza Q-values exibidos
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(${JSON.stringify(step.next_state)})`);
         updateQBars(qvals);
-        // Monta explicação
-        const actionName = ['↑','↓','←','→'][step.action];
         const bestNext = await pyodide.runPythonAsync(`np.max(agent.q_table[${JSON.stringify(step.next_state)}]).item()`);
-        const gammaVal = gamma;
-        const alphaVal = alpha;
-        const explanationHTML = `
-            <div style="background:#e2e8f0; padding:8px; border-radius:12px;">
-                <b>🧠 Movimento:</b> ${actionName} de (${step.state[0]},${step.state[1]}) → (${step.next_state[0]},${step.next_state[1]})<br>
+        const actionName = ['↑','↓','←','→'][step.action];
+        explanationDiv.innerHTML = `
+            <div style="background:#e2e8f0; border-radius:12px; padding:12px;">
+                <b><i class="fas fa-brain"></i> Movimento:</b> ${actionName} → (${step.next_state[0]},${step.next_state[1]})<br>
                 <b>Recompensa imediata (r):</b> ${step.reward.toFixed(2)}<br>
-                <b>γ = ${gammaVal}</b> &nbsp;|&nbsp; <b>α = ${alphaVal}</b><br>
+                <b>γ = ${gamma}</b> | <b>α = ${alpha}</b><br>
                 <b>Q(antigo) = ${step.old_q.toFixed(3)}</b><br>
                 <b>maxQ(s') = ${bestNext.toFixed(3)}</b><br>
-                <b>TD target = r + γ·maxQ(s') = ${step.reward.toFixed(2)} + ${gammaVal}·${bestNext.toFixed(3)} = ${step.td_target.toFixed(3)}</b><br>
-                <b>TD erro = TD target − Q(antigo) = ${step.td_target.toFixed(3)} − ${step.old_q.toFixed(3)} = ${step.td_error.toFixed(3)}</b><br>
-                <b style="color:green;">✅ Novo Q = Q(antigo) + α·TD erro = ${step.old_q.toFixed(3)} + ${alphaVal}·(${step.td_error.toFixed(3)}) = ${step.new_q.toFixed(3)}</b>
+                <b>TD target = r + γ·maxQ(s') = ${step.reward.toFixed(2)} + ${gamma}·${bestNext.toFixed(3)} = ${step.td_target.toFixed(3)}</b><br>
+                <b>TD erro = ${step.td_target.toFixed(3)} − ${step.old_q.toFixed(3)} = ${step.td_error.toFixed(3)}</b><br>
+                <b style="color:#2c7cb6;">✅ Novo Q = ${step.old_q.toFixed(3)} + ${alpha}·(${step.td_error.toFixed(3)}) = ${step.new_q.toFixed(3)}</b>
             </div>
         `;
-        explanationDiv.innerHTML = explanationHTML;
         if (step.is_goal) {
-            explanationDiv.innerHTML += `<div style="margin-top:8px; background:#c6f6d5; padding:8px; border-radius:12px;">🏆 Parabéns! Você chegou ao tesouro! Clique em "Resetar Q-table" para recomeçar.</div>`;
-            manualModeActive = false;
-            document.getElementById('manualModeBtn').style.opacity = '0.6';
+            explanationDiv.innerHTML += `<div style="margin-top:12px; background:#c6f6d5; padding:8px; border-radius:12px;">🏆 Você chegou ao tesouro! Clique em "Resetar Q" para recomeçar.</div>`;
+            manualMode = false;
+            if (manualActionContainer) manualActionContainer.style.display = 'none';
         }
-        statusDiv.innerHTML = `Movimento manual executado. Próximo estado: (${step.next_state[0]},${step.next_state[1]})`;
     }
 
-    // Eventos dos botões
     document.getElementById('trainOneBtn').onclick = trainOneEpisode;
     document.getElementById('trainBatchBtn').onclick = trainBatch;
     document.getElementById('resetBtn').onclick = resetAgent;
-    document.getElementById('manualModeBtn').onclick = async () => {
-        if (!isReady) return;
-        manualModeActive = true;
-        // Reinicia a posição para o início
-        const startState = await pyodide.runPythonAsync(`reset_manual_state()`);
-        currentAgentState = startState;
-        drawMaze(currentAgentState[0], currentAgentState[1]);
-        const qvals = await pyodide.runPythonAsync(`get_q_values_at(${JSON.stringify(startState)})`);
-        updateQBars(qvals);
-        explanationDiv.innerHTML = "<i>🕹️ Modo manual ativo. Clique nas setas abaixo para mover o agente.</i>";
-        statusDiv.innerHTML = "Modo manual ativo. Use os botões de ação.";
-        // Criar botões de ação se não existirem
-        let actionContainer = document.getElementById('actionButtons');
-        if (!actionContainer) {
-            actionContainer = document.createElement('div');
-            actionContainer.id = 'actionButtons';
-            actionContainer.className = 'flex-buttons';
-            actionContainer.style.justifyContent = 'center';
-            actionContainer.style.marginTop = '10px';
-            const visualPanel = document.querySelector('.visual-panel');
-            visualPanel.appendChild(actionContainer);
-        }
-        actionContainer.innerHTML = '';
-        const actions = ['↑', '↓', '←', '→'];
-        actions.forEach((act, idx) => {
-            const btn = document.createElement('button');
-            btn.innerText = act;
-            btn.style.fontSize = '1.5rem';
-            btn.style.padding = '0.5rem 1rem';
-            btn.onclick = () => manualAction(idx);
-            actionContainer.appendChild(btn);
-        });
-    };
+    document.getElementById('manualModeBtn').onclick = enableManualMode;
 
     loadPyodideAndInit();
 </script>
