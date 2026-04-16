@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🧀 Q‑Learning Maze · Rato e Queijo</title>
+    <title>🧀 Q‑Learning Maze</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
@@ -60,7 +60,7 @@
         }
         .title-section h1 { font-size: 1.6rem; font-weight: 600; }
         .title-section p { font-size: 0.85rem; opacity: 0.8; margin-top: 0.2rem; }
-        .loading-status {
+        .status-badge {
             background: rgba(255,255,255,0.12);
             backdrop-filter: blur(4px);
             padding: 0.5rem 1rem;
@@ -251,8 +251,8 @@
             <h1><i class="fas fa-cheese"></i> Q‑Learning Maze · Rato e Queijo</h1>
             <p>Aprendizado por Reforço interativo — o rato aprende a encontrar o queijo</p>
         </div>
-        <div id="loadingIndicator" class="loading-status">
-            <i class="fas fa-spinner fa-pulse"></i> <span>Inicializando...</span>
+        <div id="statusBadge" class="status-badge">
+            <i class="fas fa-hourglass-half"></i> <span id="statusText">Inicializando...</span>
         </div>
     </div>
 
@@ -354,15 +354,19 @@
 </div>
 
 <script>
-    // Animação de loading com rato
+    // ========== ANIMAÇÃO DE LOADING COM MOVIMENTO ALEATÓRIO ==========
     const loadingCanvas = document.getElementById('loadingCanvas');
     const loadingCtx = loadingCanvas.getContext('2d');
     let loadingFrame = 0;
+    let loadingPos = { x: 0, y: 0 };
+    let loadingTarget = { x: 4, y: 4 };
+    let loadingSteps = 0;
     function drawLoading() {
         loadingCtx.clearRect(0, 0, 200, 200);
         loadingCtx.fillStyle = '#2d3e4e';
         loadingCtx.fillRect(0, 0, 200, 200);
         const cell = 40;
+        // Desenha grade e paredes aleatórias para o loading
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 5; j++) {
                 if ((i===1 && j===1) || (i===1 && j===3) || (i===3 && j===2)) {
@@ -374,26 +378,47 @@
                 }
             }
         }
+        // Queijo
         loadingCtx.fillStyle = '#FFD966';
         loadingCtx.fillRect(4*cell, 4*cell, cell, cell);
         loadingCtx.fillStyle = '#E6A817';
         loadingCtx.font = '25px sans-serif';
         loadingCtx.fillText('🧀', 4*cell+10, 4*cell+30);
-        const step = (loadingFrame % 40) / 10;
-        const ratX = Math.min(4, Math.floor(step));
-        const ratY = Math.min(4, Math.floor(step));
-        loadingCtx.fillStyle = '#6C757D';
+        // Movimento aleatório do ratinho
+        if (loadingSteps <= 0) {
+            // escolhe nova direção aleatória (cima, baixo, esq, dir)
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+            const validDirs = dirs.filter(d => {
+                const nx = loadingPos.x + d[0];
+                const ny = loadingPos.y + d[1];
+                if (nx<0 || nx>=5 || ny<0 || ny>=5) return false;
+                if ((nx===1 && ny===1) || (nx===1 && ny===3) || (nx===3 && ny===2)) return false;
+                return true;
+            });
+            if (validDirs.length > 0) {
+                const move = validDirs[Math.floor(Math.random() * validDirs.length)];
+                loadingPos.x += move[0];
+                loadingPos.y += move[1];
+            }
+            loadingSteps = 8; // permanece um pouco na posição
+        } else {
+            loadingSteps--;
+        }
+        // Desenha rato
+        const ratX = loadingPos.x, ratY = loadingPos.y;
+        loadingCtx.fillStyle = "#6C757D";
         loadingCtx.beginPath();
-        loadingCtx.ellipse(ratX*cell+20, ratY*cell+25, 12, 10, 0, 0, 2*Math.PI);
+        loadingCtx.ellipse(ratY*cell+20, ratX*cell+25, 12, 10, 0, 0, 2*Math.PI);
         loadingCtx.fill();
-        loadingCtx.fillStyle = 'black';
+        loadingCtx.fillStyle = "black";
         loadingCtx.font = '20px sans-serif';
-        loadingCtx.fillText('🐭', ratX*cell+12, ratY*cell+30);
+        loadingCtx.fillText('🐭', ratY*cell+12, ratX*cell+30);
         loadingFrame++;
         requestAnimationFrame(drawLoading);
     }
     drawLoading();
 
+    // ========== LÓGICA PRINCIPAL ==========
     let pyodide = null;
     let isReady = false;
     let manualMode = false;
@@ -406,7 +431,8 @@
 
     const canvas = document.getElementById('mazeCanvas');
     const ctx = canvas.getContext('2d');
-    const loadingSpan = document.querySelector('#loadingIndicator span');
+    const statusSpan = document.getElementById('statusText');
+    const statusBadgeIcon = document.querySelector('#statusBadge i');
     const explanationDiv = document.getElementById('explanationBox');
     const alphaSlider = document.getElementById('alphaSlider');
     const gammaSlider = document.getElementById('gammaSlider');
@@ -663,23 +689,34 @@ def get_q_values_at(state):
         const qvals = await pyodide.runPythonAsync(`get_q_values_at(get_agent_state())`);
         updateQBars(qvals);
         isReady = true;
-        loadingSpan.innerText = "Ambiente pronto!";
-        document.getElementById('loadingOverlay').style.opacity = '0';
+        // Atualiza o badge de status
+        statusSpan.innerText = "Ambiente pronto";
+        statusBadgeIcon.className = "fas fa-check-circle";
+        // Aguarda 3 segundos antes de esconder o overlay para dar tempo de ver a animação
         setTimeout(() => {
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-        }, 500);
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+            }, 500);
+        }, 3000);
     }
 
     async function trainOneEpisode() {
-        if (!isReady) return;
+        if (!isReady) {
+            explanationDiv.innerHTML = "<i class='fas fa-exclamation-triangle'></i> Aguarde o carregamento completo.";
+            return;
+        }
         const alpha = parseFloat(alphaSlider.value);
         const gamma = parseFloat(gammaSlider.value);
         const epsilon = parseFloat(epsilonSlider.value);
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
         await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        const reward = await pyodide.runPythonAsync(`agent.train_episode()[0].item()`);
+        explanationDiv.innerHTML = "<i class='fas fa-spinner fa-pulse'></i> Treinando 1 episódio...";
+        const result = await pyodide.runPythonAsync(`agent.train_episode()`);
+        const reward = result[0];
         episodeCount++;
         lastReward = reward;
         updateMetrics();
@@ -698,14 +735,17 @@ def get_q_values_at(state):
     }
 
     async function trainBatch() {
-        if (!isReady) return;
+        if (!isReady) {
+            explanationDiv.innerHTML = "<i class='fas fa-exclamation-triangle'></i> Aguarde o carregamento completo.";
+            return;
+        }
         const alpha = parseFloat(alphaSlider.value);
         const gamma = parseFloat(gammaSlider.value);
         const epsilon = parseFloat(epsilonSlider.value);
         const stepPen = parseFloat(stepPenaltySlider.value);
         const goalRew = parseFloat(goalRewardSlider.value);
         await pyodide.runPythonAsync(`update_params(${alpha}, ${gamma}, ${epsilon}, ${stepPen}, ${goalRew})`);
-        explanationDiv.innerHTML = "<i class='fas fa-spinner fa-pulse'></i> Treinando 100 episódios...";
+        explanationDiv.innerHTML = "<i class='fas fa-spinner fa-pulse'></i> Treinando 100 episódios (pode levar alguns segundos)...";
         await pyodide.runPythonAsync(`agent.train_batch(100)`);
         episodeCount += 100;
         const lastRew = await pyodide.runPythonAsync(`agent.rewards_history[-1].item()`);
@@ -776,10 +816,25 @@ def get_q_values_at(state):
         syncMazeToPython();
     };
     document.getElementById('randomMazeBtn').onclick = () => {
-        for (let i=0; i<mazeData.length; i++)
-            for (let j=0; j<mazeData[0].length; j++)
-                if (mazeData[i][j] !== 2 && Math.random() < 0.3) mazeData[i][j] = 1;
-                else if (mazeData[i][j] !== 2) mazeData[i][j] = 0;
+        const rows = mazeData.length;
+        const cols = mazeData[0].length;
+        for (let i=0; i<rows; i++) {
+            for (let j=0; j<cols; j++) {
+                if (mazeData[i][j] === 2) continue; // preserva queijo
+                if (Math.random() < 0.3) mazeData[i][j] = 1;
+                else mazeData[i][j] = 0;
+            }
+        }
+        // Garante que a posição inicial (0,0) não seja parede
+        if (mazeData[0][0] === 1) mazeData[0][0] = 0;
+        // Garante que o queijo não seja parede
+        const goalPos = (() => {
+            for (let i=0; i<rows; i++)
+                for (let j=0; j<cols; j++)
+                    if (mazeData[i][j] === 2) return [i,j];
+            return null;
+        })();
+        if (goalPos && mazeData[goalPos[0]][goalPos[1]] === 1) mazeData[goalPos[0]][goalPos[1]] = 2;
         drawMaze(currentAgentState[0], currentAgentState[1]);
         syncMazeToPython();
     };
@@ -870,7 +925,8 @@ json.dumps(data)
 
     loadPyodideAndInit().catch(err => {
         console.error(err);
-        loadingSpan.innerText = "Erro ao carregar. Recarregue a página.";
+        statusSpan.innerText = "Erro ao carregar";
+        statusBadgeIcon.className = "fas fa-exclamation-triangle";
     });
 </script>
 </body>
